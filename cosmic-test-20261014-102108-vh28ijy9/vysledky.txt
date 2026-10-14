@@ -1,0 +1,1891 @@
+COSMIC – DIAGNOSTIKA PŘEPÍNÁNÍ OKEN
+Verze skriptu: 1.0
+Čas: 2026-10-14T10:21:08.054131+02:00
+
+CO JE ZMĚŘENO
+Příkaz = start procesu až jeho konec (včetně režie Pythonu).
+Fokus = start příkazu až přijetí události změny aktivního okna.
+Fokus není čas vykreslení obrazu. Automatický test neprochází klávesovou zkratkou.
+Měření probíhá postupně; p95 z malého počtu vzorků je jen orientační.
+
+PŘEHLED (ms; pomlčka znamená nezměřeno)
+Test                                          n  příkaz med.   fokus med.    fokus p95
+Režie spuštění /usr/bin/true                  8        1.131            -            -
+Switcher: ping (IPC)                          1        2.031            -            -
+Switcher: status                              1        2.175            -            -
+Dočasný switcher: ping (IPC)                  8        1.619            -            -
+Cosmicmsg: načtení oken                       5       304.71            -            -
+Switcher: next → fokus                        8         2.79       155.72      157.441
+Switcher: prev → fokus                        8        2.659        5.992      143.157
+Cosmicmsg: activate → fokus                   8      300.756       450.85       462.92
+
+ZJIŠTĚNÍ A OMEZENÍ
+- Původní daemon neodpověděl pong.
+- Měření rotování proběhlo s dočasně spuštěným daemonem z nalezené binárky.
+- Fyzické Alt+Tab vs Super+šipky nejsou automaticky změřené. Volitelně --klavesnice /dev/input/eventN, pouze pokud má běžný uživatel přístup. Bez přístupu nic nepřenastavuj a nespouštěj celý skript přes sudo. Samotné spuštění grafického Alt+Tab programu z terminálu není srovnatelný test zkratky.
+- Release build a instalovaný switcher: shodné.
+- Release build a instalovaný switcher: shodné.
+- Switcher: ping (IPC): 1 neúspěšných příkazů; jejich časy nejsou úspěšná přepnutí.
+- Switcher: status: 1 neúspěšných příkazů; jejich časy nejsou úspěšná přepnutí.
+- Switcher: next → fokus: 1/8 vzorků bez potvrzené změny fokusu. Možné důvody: jediné okno, nefunkční přepínač, chybějící události nebo timeout. Chybějící vzorek není nula ms.
+- Switcher: prev → fokus: 4/8 vzorků bez potvrzené změny fokusu. Možné důvody: jediné okno, nefunkční přepínač, chybějící události nebo timeout. Chybějící vzorek není nula ms.
+- Doby různých testů nelze prostým odečtením rozdělit na přesné vnitřní fáze daemonu. K tomu by bylo potřeba instrumentovat jeho konkrétní zdrojový kód.
+
+DETAILY (včetně jednotlivých vzorků)
+{
+  "version": "1.0",
+  "created": "2026-10-14T10:21:08.054131+02:00",
+  "benchmarks": [
+    {
+      "label": "Režie spuštění /usr/bin/true",
+      "rows": [
+        {
+          "argv": [
+            "/usr/bin/true"
+          ],
+          "start_ns": 40703991360374,
+          "returncode": 0,
+          "command_ms": 2.266563,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 1,
+          "before": null
+        },
+        {
+          "argv": [
+            "/usr/bin/true"
+          ],
+          "start_ns": 40703993900017,
+          "returncode": 0,
+          "command_ms": 1.174243,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 2,
+          "before": null
+        },
+        {
+          "argv": [
+            "/usr/bin/true"
+          ],
+          "start_ns": 40703995299848,
+          "returncode": 0,
+          "command_ms": 2.568137,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 3,
+          "before": null
+        },
+        {
+          "argv": [
+            "/usr/bin/true"
+          ],
+          "start_ns": 40703998046081,
+          "returncode": 0,
+          "command_ms": 1.08757,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 4,
+          "before": null
+        },
+        {
+          "argv": [
+            "/usr/bin/true"
+          ],
+          "start_ns": 40703999334306,
+          "returncode": 0,
+          "command_ms": 1.034141,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 5,
+          "before": null
+        },
+        {
+          "argv": [
+            "/usr/bin/true"
+          ],
+          "start_ns": 40704000550104,
+          "returncode": 0,
+          "command_ms": 1.433076,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 6,
+          "before": null
+        },
+        {
+          "argv": [
+            "/usr/bin/true"
+          ],
+          "start_ns": 40704002212330,
+          "returncode": 0,
+          "command_ms": 1.067386,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 7,
+          "before": null
+        },
+        {
+          "argv": [
+            "/usr/bin/true"
+          ],
+          "start_ns": 40704003473246,
+          "returncode": 0,
+          "command_ms": 0.958154,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 8,
+          "before": null
+        }
+      ],
+      "command_stats_ms": {
+        "n": 8,
+        "min": 0.958,
+        "median": 1.131,
+        "p95": 2.568,
+        "max": 2.568
+      },
+      "focus_stats_ms": {
+        "n": 0
+      },
+      "first_sample_separate": {
+        "argv": [
+          "/usr/bin/true"
+        ],
+        "start_ns": 40703991360374,
+        "returncode": 0,
+        "command_ms": 2.266563,
+        "stderr": "",
+        "stdout_length": 0,
+        "index": 1,
+        "before": null
+      },
+      "steady_command_stats_ms": {
+        "n": 7,
+        "min": 0.958,
+        "median": 1.088,
+        "p95": 2.568,
+        "max": 2.568
+      },
+      "steady_focus_stats_ms": {
+        "n": 0
+      }
+    },
+    {
+      "label": "Switcher: ping (IPC)",
+      "rows": [
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "ping"
+          ],
+          "start_ns": 40704004712791,
+          "returncode": 1,
+          "command_ms": 2.031477,
+          "stderr": "cosmic-ws-switcher: Connection refused (os error 111)\n",
+          "stdout_length": 0,
+          "index": 1,
+          "before": null
+        }
+      ],
+      "command_stats_ms": {
+        "n": 1,
+        "min": 2.031,
+        "median": 2.031,
+        "p95": 2.031,
+        "max": 2.031
+      },
+      "focus_stats_ms": {
+        "n": 0
+      },
+      "first_sample_separate": {
+        "argv": [
+          "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+          "ping"
+        ],
+        "start_ns": 40704004712791,
+        "returncode": 1,
+        "command_ms": 2.031477,
+        "stderr": "cosmic-ws-switcher: Connection refused (os error 111)\n",
+        "stdout_length": 0,
+        "index": 1,
+        "before": null
+      },
+      "steady_command_stats_ms": {
+        "n": 0
+      },
+      "steady_focus_stats_ms": {
+        "n": 0
+      }
+    },
+    {
+      "label": "Switcher: status",
+      "rows": [
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "status"
+          ],
+          "start_ns": 40704006960357,
+          "returncode": 1,
+          "command_ms": 2.17514,
+          "stderr": "cosmic-ws-switcher: Connection refused (os error 111)\n",
+          "stdout_length": 0,
+          "index": 1,
+          "before": null
+        }
+      ],
+      "command_stats_ms": {
+        "n": 1,
+        "min": 2.175,
+        "median": 2.175,
+        "p95": 2.175,
+        "max": 2.175
+      },
+      "focus_stats_ms": {
+        "n": 0
+      },
+      "first_sample_separate": {
+        "argv": [
+          "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+          "status"
+        ],
+        "start_ns": 40704006960357,
+        "returncode": 1,
+        "command_ms": 2.17514,
+        "stderr": "cosmic-ws-switcher: Connection refused (os error 111)\n",
+        "stdout_length": 0,
+        "index": 1,
+        "before": null
+      },
+      "steady_command_stats_ms": {
+        "n": 0
+      },
+      "steady_focus_stats_ms": {
+        "n": 0
+      }
+    },
+    {
+      "label": "Dočasný switcher: ping (IPC)",
+      "rows": [
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "ping"
+          ],
+          "start_ns": 40704625513511,
+          "returncode": 0,
+          "command_ms": 1.643228,
+          "stderr": "",
+          "stdout_length": 5,
+          "stdout": "pong",
+          "index": 1,
+          "before": null
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "ping"
+          ],
+          "start_ns": 40704627360955,
+          "returncode": 0,
+          "command_ms": 1.352339,
+          "stderr": "",
+          "stdout_length": 5,
+          "stdout": "pong",
+          "index": 2,
+          "before": null
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "ping"
+          ],
+          "start_ns": 40704628935320,
+          "returncode": 0,
+          "command_ms": 3.513232,
+          "stderr": "",
+          "stdout_length": 5,
+          "stdout": "pong",
+          "index": 3,
+          "before": null
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "ping"
+          ],
+          "start_ns": 40704632862921,
+          "returncode": 0,
+          "command_ms": 2.252315,
+          "stderr": "",
+          "stdout_length": 5,
+          "stdout": "pong",
+          "index": 4,
+          "before": null
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "ping"
+          ],
+          "start_ns": 40704635337261,
+          "returncode": 0,
+          "command_ms": 1.594549,
+          "stderr": "",
+          "stdout_length": 5,
+          "stdout": "pong",
+          "index": 5,
+          "before": null
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "ping"
+          ],
+          "start_ns": 40704637159773,
+          "returncode": 0,
+          "command_ms": 1.949552,
+          "stderr": "",
+          "stdout_length": 5,
+          "stdout": "pong",
+          "index": 6,
+          "before": null
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "ping"
+          ],
+          "start_ns": 40704639448894,
+          "returncode": 0,
+          "command_ms": 1.594549,
+          "stderr": "",
+          "stdout_length": 5,
+          "stdout": "pong",
+          "index": 7,
+          "before": null
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "ping"
+          ],
+          "start_ns": 40704641263094,
+          "returncode": 0,
+          "command_ms": 1.314345,
+          "stderr": "",
+          "stdout_length": 5,
+          "stdout": "pong",
+          "index": 8,
+          "before": null
+        }
+      ],
+      "command_stats_ms": {
+        "n": 8,
+        "min": 1.314,
+        "median": 1.619,
+        "p95": 3.513,
+        "max": 3.513
+      },
+      "focus_stats_ms": {
+        "n": 0
+      },
+      "first_sample_separate": {
+        "argv": [
+          "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+          "ping"
+        ],
+        "start_ns": 40704625513511,
+        "returncode": 0,
+        "command_ms": 1.643228,
+        "stderr": "",
+        "stdout_length": 5,
+        "stdout": "pong",
+        "index": 1,
+        "before": null
+      },
+      "steady_command_stats_ms": {
+        "n": 7,
+        "min": 1.314,
+        "median": 1.595,
+        "p95": 3.513,
+        "max": 3.513
+      },
+      "steady_focus_stats_ms": {
+        "n": 0
+      }
+    },
+    {
+      "label": "Cosmicmsg: načtení oken",
+      "rows": [
+        {
+          "argv": [
+            "~/.local/bin/cosmicmsg",
+            "--json",
+            "get-toplevels"
+          ],
+          "start_ns": 40705242257214,
+          "returncode": 0,
+          "command_ms": 305.359069,
+          "stderr": "",
+          "data": [
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "firefox",
+              "identifier": "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM",
+              "state": [
+                "maximized"
+              ],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.system76.CosmicFiles",
+              "identifier": "EGmmf4yqQ7wa1xADxyUlih1dSTAjMa9y",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.microsoft.VSCode",
+              "identifier": "XvGHi6C1bUcYcYXStKDoH52dtxZ21k6L",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.microsoft.VSCode",
+              "identifier": "PL1nCeFxHAorw8UNSfljU3vsrVfbpjHg",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.system76.CosmicTerm",
+              "identifier": "USDJWoz2lCBQfo3M8HUVSoHg4sURl44g",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.system76.CosmicTerm",
+              "identifier": "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ",
+              "state": [
+                "activated"
+              ],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.system76.CosmicEdit",
+              "identifier": "SYyr76Rpc6tsLTSD9QzuJUANaVTZyBxh",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            }
+          ],
+          "index": 1,
+          "before": null
+        },
+        {
+          "argv": [
+            "~/.local/bin/cosmicmsg",
+            "--json",
+            "get-toplevels"
+          ],
+          "start_ns": 40705548041337,
+          "returncode": 0,
+          "command_ms": 304.516083,
+          "stderr": "",
+          "data": [
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "firefox",
+              "identifier": "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM",
+              "state": [
+                "maximized"
+              ],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.system76.CosmicFiles",
+              "identifier": "EGmmf4yqQ7wa1xADxyUlih1dSTAjMa9y",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.microsoft.VSCode",
+              "identifier": "XvGHi6C1bUcYcYXStKDoH52dtxZ21k6L",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.microsoft.VSCode",
+              "identifier": "PL1nCeFxHAorw8UNSfljU3vsrVfbpjHg",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.system76.CosmicTerm",
+              "identifier": "USDJWoz2lCBQfo3M8HUVSoHg4sURl44g",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.system76.CosmicTerm",
+              "identifier": "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ",
+              "state": [
+                "activated"
+              ],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.system76.CosmicEdit",
+              "identifier": "SYyr76Rpc6tsLTSD9QzuJUANaVTZyBxh",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            }
+          ],
+          "index": 2,
+          "before": null
+        },
+        {
+          "argv": [
+            "~/.local/bin/cosmicmsg",
+            "--json",
+            "get-toplevels"
+          ],
+          "start_ns": 40705852959916,
+          "returncode": 0,
+          "command_ms": 305.625025,
+          "stderr": "",
+          "data": [
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "firefox",
+              "identifier": "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM",
+              "state": [
+                "maximized"
+              ],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.system76.CosmicFiles",
+              "identifier": "EGmmf4yqQ7wa1xADxyUlih1dSTAjMa9y",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.microsoft.VSCode",
+              "identifier": "XvGHi6C1bUcYcYXStKDoH52dtxZ21k6L",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.microsoft.VSCode",
+              "identifier": "PL1nCeFxHAorw8UNSfljU3vsrVfbpjHg",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.system76.CosmicTerm",
+              "identifier": "USDJWoz2lCBQfo3M8HUVSoHg4sURl44g",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.system76.CosmicTerm",
+              "identifier": "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ",
+              "state": [
+                "activated"
+              ],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.system76.CosmicEdit",
+              "identifier": "SYyr76Rpc6tsLTSD9QzuJUANaVTZyBxh",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            }
+          ],
+          "index": 3,
+          "before": null
+        },
+        {
+          "argv": [
+            "~/.local/bin/cosmicmsg",
+            "--json",
+            "get-toplevels"
+          ],
+          "start_ns": 40706159094294,
+          "returncode": 0,
+          "command_ms": 304.709613,
+          "stderr": "",
+          "data": [
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "firefox",
+              "identifier": "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM",
+              "state": [
+                "maximized"
+              ],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.system76.CosmicFiles",
+              "identifier": "EGmmf4yqQ7wa1xADxyUlih1dSTAjMa9y",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.microsoft.VSCode",
+              "identifier": "XvGHi6C1bUcYcYXStKDoH52dtxZ21k6L",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.microsoft.VSCode",
+              "identifier": "PL1nCeFxHAorw8UNSfljU3vsrVfbpjHg",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.system76.CosmicTerm",
+              "identifier": "USDJWoz2lCBQfo3M8HUVSoHg4sURl44g",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.system76.CosmicTerm",
+              "identifier": "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ",
+              "state": [
+                "activated"
+              ],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.system76.CosmicEdit",
+              "identifier": "SYyr76Rpc6tsLTSD9QzuJUANaVTZyBxh",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            }
+          ],
+          "index": 4,
+          "before": null
+        },
+        {
+          "argv": [
+            "~/.local/bin/cosmicmsg",
+            "--json",
+            "get-toplevels"
+          ],
+          "start_ns": 40706464224213,
+          "returncode": 0,
+          "command_ms": 303.550805,
+          "stderr": "",
+          "data": [
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "firefox",
+              "identifier": "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM",
+              "state": [
+                "maximized"
+              ],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.system76.CosmicFiles",
+              "identifier": "EGmmf4yqQ7wa1xADxyUlih1dSTAjMa9y",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.microsoft.VSCode",
+              "identifier": "XvGHi6C1bUcYcYXStKDoH52dtxZ21k6L",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.microsoft.VSCode",
+              "identifier": "PL1nCeFxHAorw8UNSfljU3vsrVfbpjHg",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.system76.CosmicTerm",
+              "identifier": "USDJWoz2lCBQfo3M8HUVSoHg4sURl44g",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.system76.CosmicTerm",
+              "identifier": "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ",
+              "state": [
+                "activated"
+              ],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            },
+            {
+              "title": "<titulek vynechán>",
+              "app_id": "com.system76.CosmicEdit",
+              "identifier": "SYyr76Rpc6tsLTSD9QzuJUANaVTZyBxh",
+              "state": [],
+              "outputs": [
+                "eDP-1"
+              ],
+              "workspaces": [
+                "1"
+              ]
+            }
+          ],
+          "index": 5,
+          "before": null
+        }
+      ],
+      "command_stats_ms": {
+        "n": 5,
+        "min": 303.551,
+        "median": 304.71,
+        "p95": 305.625,
+        "max": 305.625
+      },
+      "focus_stats_ms": {
+        "n": 0
+      },
+      "first_sample_separate": {
+        "argv": [
+          "~/.local/bin/cosmicmsg",
+          "--json",
+          "get-toplevels"
+        ],
+        "start_ns": 40705242257214,
+        "returncode": 0,
+        "command_ms": 305.359069,
+        "stderr": "",
+        "data": [
+          {
+            "title": "<titulek vynechán>",
+            "app_id": "firefox",
+            "identifier": "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM",
+            "state": [
+              "maximized"
+            ],
+            "outputs": [
+              "eDP-1"
+            ],
+            "workspaces": [
+              "1"
+            ]
+          },
+          {
+            "title": "<titulek vynechán>",
+            "app_id": "com.system76.CosmicFiles",
+            "identifier": "EGmmf4yqQ7wa1xADxyUlih1dSTAjMa9y",
+            "state": [],
+            "outputs": [
+              "eDP-1"
+            ],
+            "workspaces": [
+              "1"
+            ]
+          },
+          {
+            "title": "<titulek vynechán>",
+            "app_id": "com.microsoft.VSCode",
+            "identifier": "XvGHi6C1bUcYcYXStKDoH52dtxZ21k6L",
+            "state": [],
+            "outputs": [
+              "eDP-1"
+            ],
+            "workspaces": [
+              "1"
+            ]
+          },
+          {
+            "title": "<titulek vynechán>",
+            "app_id": "com.microsoft.VSCode",
+            "identifier": "PL1nCeFxHAorw8UNSfljU3vsrVfbpjHg",
+            "state": [],
+            "outputs": [
+              "eDP-1"
+            ],
+            "workspaces": [
+              "1"
+            ]
+          },
+          {
+            "title": "<titulek vynechán>",
+            "app_id": "com.system76.CosmicTerm",
+            "identifier": "USDJWoz2lCBQfo3M8HUVSoHg4sURl44g",
+            "state": [],
+            "outputs": [
+              "eDP-1"
+            ],
+            "workspaces": [
+              "1"
+            ]
+          },
+          {
+            "title": "<titulek vynechán>",
+            "app_id": "com.system76.CosmicTerm",
+            "identifier": "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ",
+            "state": [
+              "activated"
+            ],
+            "outputs": [
+              "eDP-1"
+            ],
+            "workspaces": [
+              "1"
+            ]
+          },
+          {
+            "title": "<titulek vynechán>",
+            "app_id": "com.system76.CosmicEdit",
+            "identifier": "SYyr76Rpc6tsLTSD9QzuJUANaVTZyBxh",
+            "state": [],
+            "outputs": [
+              "eDP-1"
+            ],
+            "workspaces": [
+              "1"
+            ]
+          }
+        ],
+        "index": 1,
+        "before": null
+      },
+      "steady_command_stats_ms": {
+        "n": 4,
+        "min": 303.551,
+        "median": 304.613,
+        "p95": 305.625,
+        "max": 305.625
+      },
+      "steady_focus_stats_ms": {
+        "n": 0
+      }
+    },
+    {
+      "label": "Switcher: next → fokus",
+      "rows": [
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "next"
+          ],
+          "start_ns": 40712743086132,
+          "returncode": 0,
+          "command_ms": 3.002691,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 1,
+          "before": "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ",
+          "focus_event_ms": 157.441216,
+          "after": "SYyr76Rpc6tsLTSD9QzuJUANaVTZyBxh"
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "next"
+          ],
+          "start_ns": 40713061293014,
+          "returncode": 0,
+          "command_ms": 3.149916,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 2,
+          "before": "SYyr76Rpc6tsLTSD9QzuJUANaVTZyBxh",
+          "focus_event_ms": 156.028324,
+          "after": "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM"
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "next"
+          ],
+          "start_ns": 40713378116686,
+          "returncode": 0,
+          "command_ms": 2.666684,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 3,
+          "before": "SYyr76Rpc6tsLTSD9QzuJUANaVTZyBxh",
+          "focus_event_ms": null,
+          "after": null
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "next"
+          ],
+          "start_ns": 40716539412436,
+          "returncode": 0,
+          "command_ms": 2.704678,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 4,
+          "before": "SYyr76Rpc6tsLTSD9QzuJUANaVTZyBxh",
+          "focus_event_ms": 4.872695,
+          "after": "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM"
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "next"
+          ],
+          "start_ns": 40716705067419,
+          "returncode": 0,
+          "command_ms": 3.009815,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 5,
+          "before": "EGmmf4yqQ7wa1xADxyUlih1dSTAjMa9y",
+          "focus_event_ms": 147.296893,
+          "after": "XvGHi6C1bUcYcYXStKDoH52dtxZ21k6L"
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "next"
+          ],
+          "start_ns": 40717013103857,
+          "returncode": 0,
+          "command_ms": 2.872088,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 6,
+          "before": "XvGHi6C1bUcYcYXStKDoH52dtxZ21k6L",
+          "focus_event_ms": 157.00785,
+          "after": "PL1nCeFxHAorw8UNSfljU3vsrVfbpjHg"
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "next"
+          ],
+          "start_ns": 40717330842941,
+          "returncode": 0,
+          "command_ms": 2.707052,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 7,
+          "before": "PL1nCeFxHAorw8UNSfljU3vsrVfbpjHg",
+          "focus_event_ms": 155.719625,
+          "after": "USDJWoz2lCBQfo3M8HUVSoHg4sURl44g"
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "next"
+          ],
+          "start_ns": 40717646841438,
+          "returncode": 0,
+          "command_ms": 2.375794,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 8,
+          "before": "USDJWoz2lCBQfo3M8HUVSoHg4sURl44g",
+          "focus_event_ms": 144.312011,
+          "after": "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ"
+        }
+      ],
+      "command_stats_ms": {
+        "n": 8,
+        "min": 2.376,
+        "median": 2.79,
+        "p95": 3.15,
+        "max": 3.15
+      },
+      "focus_stats_ms": {
+        "n": 7,
+        "min": 4.873,
+        "median": 155.72,
+        "p95": 157.441,
+        "max": 157.441
+      },
+      "first_sample_separate": {
+        "argv": [
+          "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+          "next"
+        ],
+        "start_ns": 40712743086132,
+        "returncode": 0,
+        "command_ms": 3.002691,
+        "stderr": "",
+        "stdout_length": 0,
+        "index": 1,
+        "before": "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ",
+        "focus_event_ms": 157.441216,
+        "after": "SYyr76Rpc6tsLTSD9QzuJUANaVTZyBxh"
+      },
+      "steady_command_stats_ms": {
+        "n": 7,
+        "min": 2.376,
+        "median": 2.707,
+        "p95": 3.15,
+        "max": 3.15
+      },
+      "steady_focus_stats_ms": {
+        "n": 6,
+        "min": 4.873,
+        "median": 151.508,
+        "p95": 157.008,
+        "max": 157.008
+      }
+    },
+    {
+      "label": "Switcher: prev → fokus",
+      "rows": [
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "prev"
+          ],
+          "start_ns": 40717951514245,
+          "returncode": 0,
+          "command_ms": 2.558639,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 1,
+          "before": "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ",
+          "focus_event_ms": 143.156765,
+          "after": "USDJWoz2lCBQfo3M8HUVSoHg4sURl44g"
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "prev"
+          ],
+          "start_ns": 40718255336942,
+          "returncode": 0,
+          "command_ms": 2.616818,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 2,
+          "before": "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ",
+          "focus_event_ms": null,
+          "after": null
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "prev"
+          ],
+          "start_ns": 40721416458159,
+          "returncode": 0,
+          "command_ms": 2.701116,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 3,
+          "before": "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ",
+          "focus_event_ms": 5.126777,
+          "after": "PL1nCeFxHAorw8UNSfljU3vsrVfbpjHg"
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "prev"
+          ],
+          "start_ns": 40721582110767,
+          "returncode": 0,
+          "command_ms": 2.546766,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 4,
+          "before": "USDJWoz2lCBQfo3M8HUVSoHg4sURl44g",
+          "focus_event_ms": null,
+          "after": null
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "prev"
+          ],
+          "start_ns": 40724743581051,
+          "returncode": 0,
+          "command_ms": 3.197408,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 5,
+          "before": "USDJWoz2lCBQfo3M8HUVSoHg4sURl44g",
+          "focus_event_ms": 6.184664,
+          "after": "XvGHi6C1bUcYcYXStKDoH52dtxZ21k6L"
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "prev"
+          ],
+          "start_ns": 40724910190625,
+          "returncode": 0,
+          "command_ms": 3.266273,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 6,
+          "before": "PL1nCeFxHAorw8UNSfljU3vsrVfbpjHg",
+          "focus_event_ms": null,
+          "after": null
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "prev"
+          ],
+          "start_ns": 40728071355772,
+          "returncode": 0,
+          "command_ms": 2.831719,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 7,
+          "before": "PL1nCeFxHAorw8UNSfljU3vsrVfbpjHg",
+          "focus_event_ms": 5.798791,
+          "after": "EGmmf4yqQ7wa1xADxyUlih1dSTAjMa9y"
+        },
+        {
+          "argv": [
+            "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+            "prev"
+          ],
+          "start_ns": 40728237875111,
+          "returncode": 0,
+          "command_ms": 2.556265,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 8,
+          "before": "XvGHi6C1bUcYcYXStKDoH52dtxZ21k6L",
+          "focus_event_ms": null,
+          "after": null
+        }
+      ],
+      "command_stats_ms": {
+        "n": 8,
+        "min": 2.547,
+        "median": 2.659,
+        "p95": 3.266,
+        "max": 3.266
+      },
+      "focus_stats_ms": {
+        "n": 4,
+        "min": 5.127,
+        "median": 5.992,
+        "p95": 143.157,
+        "max": 143.157
+      },
+      "first_sample_separate": {
+        "argv": [
+          "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+          "prev"
+        ],
+        "start_ns": 40717951514245,
+        "returncode": 0,
+        "command_ms": 2.558639,
+        "stderr": "",
+        "stdout_length": 0,
+        "index": 1,
+        "before": "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ",
+        "focus_event_ms": 143.156765,
+        "after": "USDJWoz2lCBQfo3M8HUVSoHg4sURl44g"
+      },
+      "steady_command_stats_ms": {
+        "n": 7,
+        "min": 2.547,
+        "median": 2.701,
+        "p95": 3.266,
+        "max": 3.266
+      },
+      "steady_focus_stats_ms": {
+        "n": 3,
+        "min": 5.127,
+        "median": 5.799,
+        "p95": 6.185,
+        "max": 6.185
+      }
+    },
+    {
+      "label": "Cosmicmsg: activate → fokus",
+      "rows": [
+        {
+          "argv": [
+            "~/.local/bin/cosmicmsg",
+            "window",
+            "activate",
+            "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM"
+          ],
+          "start_ns": 40731399094874,
+          "returncode": 0,
+          "command_ms": 308.961348,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 1,
+          "before": "XvGHi6C1bUcYcYXStKDoH52dtxZ21k6L",
+          "focus_event_ms": 460.894662,
+          "after": "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM"
+        },
+        {
+          "argv": [
+            "~/.local/bin/cosmicmsg",
+            "window",
+            "activate",
+            "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM"
+          ],
+          "start_ns": 40732020752827,
+          "returncode": 0,
+          "command_ms": 300.748769,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 1,
+          "before": "EGmmf4yqQ7wa1xADxyUlih1dSTAjMa9y",
+          "focus_event_ms": 147.467865,
+          "after": "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM"
+        },
+        {
+          "argv": [
+            "~/.local/bin/cosmicmsg",
+            "window",
+            "activate",
+            "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ"
+          ],
+          "start_ns": 40732482505910,
+          "returncode": 0,
+          "command_ms": 309.800771,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 1,
+          "before": "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM",
+          "focus_event_ms": 462.242251,
+          "after": "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ"
+        },
+        {
+          "argv": [
+            "~/.local/bin/cosmicmsg",
+            "window",
+            "activate",
+            "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM"
+          ],
+          "start_ns": 40733105214626,
+          "returncode": 0,
+          "command_ms": 298.820588,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 1,
+          "before": "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ",
+          "focus_event_ms": 451.49003,
+          "after": "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM"
+        },
+        {
+          "argv": [
+            "~/.local/bin/cosmicmsg",
+            "window",
+            "activate",
+            "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM"
+          ],
+          "start_ns": 40733717811078,
+          "returncode": 0,
+          "command_ms": 297.735391,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 1,
+          "before": "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ",
+          "focus_event_ms": 144.282329,
+          "after": "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM"
+        },
+        {
+          "argv": [
+            "~/.local/bin/cosmicmsg",
+            "window",
+            "activate",
+            "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ"
+          ],
+          "start_ns": 40734176696822,
+          "returncode": 0,
+          "command_ms": 310.50128,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 1,
+          "before": "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM",
+          "focus_event_ms": 462.920202,
+          "after": "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ"
+        },
+        {
+          "argv": [
+            "~/.local/bin/cosmicmsg",
+            "window",
+            "activate",
+            "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM"
+          ],
+          "start_ns": 40734800500233,
+          "returncode": 0,
+          "command_ms": 297.731829,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 1,
+          "before": "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ",
+          "focus_event_ms": 450.210116,
+          "after": "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM"
+        },
+        {
+          "argv": [
+            "~/.local/bin/cosmicmsg",
+            "window",
+            "activate",
+            "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM"
+          ],
+          "start_ns": 40735411782339,
+          "returncode": 0,
+          "command_ms": 300.763016,
+          "stderr": "",
+          "stdout_length": 0,
+          "index": 1,
+          "before": "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ",
+          "focus_event_ms": 146.916956,
+          "after": "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM"
+        }
+      ],
+      "command_stats_ms": {
+        "n": 8,
+        "min": 297.732,
+        "median": 300.756,
+        "p95": 310.501,
+        "max": 310.501
+      },
+      "focus_stats_ms": {
+        "n": 8,
+        "min": 144.282,
+        "median": 450.85,
+        "p95": 462.92,
+        "max": 462.92
+      }
+    }
+  ],
+  "notes": [
+    "Původní daemon neodpověděl pong.",
+    "Měření rotování proběhlo s dočasně spuštěným daemonem z nalezené binárky.",
+    "Fyzické Alt+Tab vs Super+šipky nejsou automaticky změřené. Volitelně --klavesnice /dev/input/eventN, pouze pokud má běžný uživatel přístup. Bez přístupu nic nepřenastavuj a nespouštěj celý skript přes sudo. Samotné spuštění grafického Alt+Tab programu z terminálu není srovnatelný test zkratky.",
+    "Release build a instalovaný switcher: shodné.",
+    "Release build a instalovaný switcher: shodné.",
+    "Switcher: ping (IPC): 1 neúspěšných příkazů; jejich časy nejsou úspěšná přepnutí.",
+    "Switcher: status: 1 neúspěšných příkazů; jejich časy nejsou úspěšná přepnutí.",
+    "Switcher: next → fokus: 1/8 vzorků bez potvrzené změny fokusu. Možné důvody: jediné okno, nefunkční přepínač, chybějící události nebo timeout. Chybějící vzorek není nula ms.",
+    "Switcher: prev → fokus: 4/8 vzorků bez potvrzené změny fokusu. Možné důvody: jediné okno, nefunkční přepínač, chybějící události nebo timeout. Chybějící vzorek není nula ms.",
+    "Doby různých testů nelze prostým odečtením rozdělit na přesné vnitřní fáze daemonu. K tomu by bylo potřeba instrumentovat jeho konkrétní zdrojový kód."
+  ],
+  "mode": "aktivní test",
+  "environment": {
+    "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+    "kernel": "7.1.5-76070105-generic",
+    "machine": "x86_64",
+    "session": {
+      "XDG_CURRENT_DESKTOP": "COSMIC",
+      "XDG_SESSION_TYPE": "wayland",
+      "WAYLAND_DISPLAY": "wayland-1",
+      "XDG_SESSION_DESKTOP": "COSMIC"
+    }
+  },
+  "tools": {
+    "cosmicmsg": "~/.local/bin/cosmicmsg",
+    "cosmic-ws-switcher": "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+    "cosmic-ext-app-switcher": "~/.local/bin/cosmic-ext-app-switcher"
+  },
+  "files": [
+    {
+      "path": "~/.local/bin/cosmicmsg",
+      "size": 12745104,
+      "mtime": "2026-10-08T20:41:45.282582+02:00",
+      "sha256": "5185b9a5e24d507cf1822bb753a6618602277ef7dcbce9a379fa4398481ed79f"
+    },
+    {
+      "path": "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+      "size": 2120088,
+      "mtime": "2026-10-08T21:06:40.400369+02:00",
+      "sha256": "9c5e999a2f1c1ee679ad558b6f56b84eaf86479d55164093206de3c2b8ddafc8"
+    },
+    {
+      "path": "~/.local/bin/cosmic-ext-app-switcher",
+      "size": 12254320,
+      "mtime": "2026-10-14T10:03:54.928322+02:00",
+      "sha256": "f04df363dd7b0a7f9c0dbb9befd73e1e919b61a72ad9eef1744b58141e7473ba"
+    },
+    {
+      "path": "~/cosmic-ws-switcher/target/release/cosmic-ws-switcher",
+      "size": 2120088,
+      "mtime": "2026-10-08T21:06:40.400369+02:00",
+      "sha256": "9c5e999a2f1c1ee679ad558b6f56b84eaf86479d55164093206de3c2b8ddafc8"
+    }
+  ],
+  "checks": {
+    "service": {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "cosmic-ws-switcher.service",
+        "--property=ActiveState,SubState,MainPID,ExecStart,FragmentPath"
+      ],
+      "start_ns": 40703923584331,
+      "returncode": 0,
+      "command_ms": 11.76618,
+      "stdout": "MainPID=0\nExecStart={ path=~/.local/bin/cosmic-ws-switcher ; argv[]=~/.local/bin/cosmic-ws-switcher daemon ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }\nActiveState=inactive\nSubState=dead\nFragmentPath=~/.config/systemd/user/cosmic-ws-switcher.service\n",
+      "stderr": ""
+    },
+    "service_unit": {
+      "argv": [
+        "systemctl",
+        "--user",
+        "cat",
+        "cosmic-ws-switcher.service"
+      ],
+      "start_ns": 40703935828994,
+      "returncode": 0,
+      "command_ms": 8.83354,
+      "stdout": "# ~/.config/systemd/user/cosmic-ws-switcher.service\n[Unit]\nDescription=COSMIC current-workspace window switcher\nAfter=graphical-session.target\nPartOf=graphical-session.target\n\n[Service]\nType=simple\nExecStart=%h/.local/bin/cosmic-ws-switcher daemon\nRestart=on-failure\nRestartSec=1\n\n[Install]\nWantedBy=default.target\n",
+      "stderr": ""
+    },
+    "packages": {
+      "argv": [
+        "dpkg-query",
+        "-W",
+        "-f=${Package} ${Version}\n",
+        "cosmic-comp",
+        "cosmic-session",
+        "cosmic-settings",
+        "cosmic-launcher"
+      ],
+      "start_ns": 40703944862001,
+      "returncode": 0,
+      "command_ms": 32.242418,
+      "stdout": "cosmic-comp 0.1~1790118748~24.04~0fbd457\ncosmic-launcher 1.9.0~1789681974~24.04~cc3d42b\ncosmic-session 1.9.0~1790185295~24.04~1e4f10b\ncosmic-settings 1.9.0~1790109537~24.04~7421ff0\n",
+      "stderr": ""
+    },
+    "get-toplevels": {
+      "argv": [
+        "~/.local/bin/cosmicmsg",
+        "--json",
+        "get-toplevels"
+      ],
+      "start_ns": 40704642798278,
+      "returncode": 0,
+      "command_ms": 293.081161,
+      "stderr": "",
+      "data": [
+        {
+          "title": "<titulek vynechán>",
+          "app_id": "firefox",
+          "identifier": "HqJZVftMdVxukkAgRb6igpzEmRnFrAUM",
+          "state": [
+            "maximized"
+          ],
+          "outputs": [
+            "eDP-1"
+          ],
+          "workspaces": [
+            "1"
+          ]
+        },
+        {
+          "title": "<titulek vynechán>",
+          "app_id": "com.system76.CosmicFiles",
+          "identifier": "EGmmf4yqQ7wa1xADxyUlih1dSTAjMa9y",
+          "state": [],
+          "outputs": [
+            "eDP-1"
+          ],
+          "workspaces": [
+            "1"
+          ]
+        },
+        {
+          "title": "<titulek vynechán>",
+          "app_id": "com.microsoft.VSCode",
+          "identifier": "XvGHi6C1bUcYcYXStKDoH52dtxZ21k6L",
+          "state": [],
+          "outputs": [
+            "eDP-1"
+          ],
+          "workspaces": [
+            "1"
+          ]
+        },
+        {
+          "title": "<titulek vynechán>",
+          "app_id": "com.microsoft.VSCode",
+          "identifier": "PL1nCeFxHAorw8UNSfljU3vsrVfbpjHg",
+          "state": [],
+          "outputs": [
+            "eDP-1"
+          ],
+          "workspaces": [
+            "1"
+          ]
+        },
+        {
+          "title": "<titulek vynechán>",
+          "app_id": "com.system76.CosmicTerm",
+          "identifier": "USDJWoz2lCBQfo3M8HUVSoHg4sURl44g",
+          "state": [],
+          "outputs": [
+            "eDP-1"
+          ],
+          "workspaces": [
+            "1"
+          ]
+        },
+        {
+          "title": "<titulek vynechán>",
+          "app_id": "com.system76.CosmicTerm",
+          "identifier": "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ",
+          "state": [
+            "activated"
+          ],
+          "outputs": [
+            "eDP-1"
+          ],
+          "workspaces": [
+            "1"
+          ]
+        },
+        {
+          "title": "<titulek vynechán>",
+          "app_id": "com.system76.CosmicEdit",
+          "identifier": "SYyr76Rpc6tsLTSD9QzuJUANaVTZyBxh",
+          "state": [],
+          "outputs": [
+            "eDP-1"
+          ],
+          "workspaces": [
+            "1"
+          ]
+        }
+      ]
+    },
+    "get-workspaces": {
+      "argv": [
+        "~/.local/bin/cosmicmsg",
+        "--json",
+        "get-workspaces"
+      ],
+      "start_ns": 40704936365046,
+      "returncode": 0,
+      "command_ms": 305.44218,
+      "stderr": "",
+      "data": [
+        {
+          "name": "1",
+          "id": null,
+          "coordinates": [
+            1
+          ],
+          "active": true,
+          "urgent": false,
+          "hidden": false,
+          "pinned": false,
+          "tiling": "disabled",
+          "output": "eDP-1",
+          "group_id": "ext_workspace_group_handle_v1@4278190080"
+        },
+        {
+          "name": "2",
+          "id": null,
+          "coordinates": [
+            2
+          ],
+          "active": false,
+          "urgent": false,
+          "hidden": false,
+          "pinned": false,
+          "tiling": "disabled",
+          "output": "eDP-1",
+          "group_id": "ext_workspace_group_handle_v1@4278190080"
+        }
+      ]
+    }
+  },
+  "running_binaries": [],
+  "source_indicators": [
+    {
+      "path": "~/cosmic-ws-switcher/src/main.rs",
+      "matches": [
+        {
+          "line": 1,
+          "text": "use cosmicmsg::{collect_state, subscribe, window_activate, MonitorEvent};"
+        },
+        {
+          "line": 179,
+          "text": "    let (state, _event_queue) = collect_state()?;"
+        },
+        {
+          "line": 247,
+          "text": "    let (mut control_state, mut control_eq) = collect_state()?;"
+        },
+        {
+          "line": 301,
+          "text": "                window_activate(&mut control_state, &mut control_eq, &identifier)"
+        },
+        {
+          "line": 307,
+          "text": "                match collect_state() {"
+        },
+        {
+          "line": 313,
+          "text": "                            window_activate(&mut control_state, &mut control_eq, &identifier)"
+        },
+        {
+          "line": 329,
+          "text": "fn send_command(command: &str) -> Result<(), Box<dyn std::error::Error>> {"
+        }
+      ],
+      "note": "Zdrojové řádky nedokazují, jaká verze je v běžící binárce."
+    }
+  ],
+  "shortcut_lines": [
+    {
+      "path": "~/.config/cosmic/com.system76.CosmicSettings.Shortcuts/v1/custom",
+      "lines": [
+        "        key: \"Left\",",
+        "    ): Spawn(\"~/.local/bin/cosmic-ws-switcher prev\"),",
+        "        key: \"Right\",",
+        "    ): Spawn(\"~/.local/bin/cosmic-ws-switcher next\"),"
+      ]
+    },
+    {
+      "path": "~/.config/cosmic/com.system76.CosmicSettings.Shortcuts/v1/system_actions",
+      "lines": [
+        "    WindowSwitcher: \"~/.local/bin/cosmic-ext-app-switcher\",",
+        "    WindowSwitcherPrevious: \"~/.local/bin/cosmic-ext-app-switcher --reverse\","
+      ]
+    }
+  ],
+  "input_devices": [
+    {
+      "path": "/dev/input/event3",
+      "name": "ITE Tech. Inc. ITE Device(8910) Keyboard",
+      "readable": false
+    },
+    {
+      "path": "/dev/input/event2",
+      "name": "AT Translated Set 2 keyboard",
+      "readable": false
+    }
+  ],
+  "temporary_daemon": {
+    "pid": 339099,
+    "ping_ok": true,
+    "note": "Dočasný proces diagnostiky, nikoli zapnutá systemd služba.",
+    "stopped": true
+  },
+  "restore_focus": {
+    "argv": [
+      "~/.local/bin/cosmicmsg",
+      "window",
+      "activate",
+      "aFLwFVhRjciq9Q7NkbMrNOxY6bOveYIQ"
+    ],
+    "start_ns": 40735713027400,
+    "returncode": 0,
+    "command_ms": 305.279519,
+    "stderr": "",
+    "stdout_length": 0
+  },
+  "observer": {
+    "lines": 806,
+    "invalid_json_lines": 0,
+    "focus_changes": 30,
+    "errors": []
+  },
+  "temporary_daemon_log": "cosmic-ws-switcher daemon ativo em /run/user/1000/cosmic-ws-switcher.sock\n",
+  "service_error_lines": [
+    "cosmic-ws-switcher: failed to connect to Wayland display: Could not find wayland compositor",
+    "cosmic-ws-switcher.service: Failed with result 'exit-code'."
+  ]
+}
