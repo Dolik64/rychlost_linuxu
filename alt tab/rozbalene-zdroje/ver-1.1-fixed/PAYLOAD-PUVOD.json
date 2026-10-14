@@ -1,0 +1,27 @@
+{
+  "source_installer": "ver 1.1/cosmic_alt_tab_mru_fixed.py",
+  "source_installer_sha256": "bd7b351fff32baf8a2eeaee80a07b57a3c85a09b9bb15f2e10b7d7f371df513e",
+  "payload_sha256": "ad35fdb42138d3874d06516521b39638a3a49f347c63d5f9fa902c814ae906ca",
+  "format": "base64 -> gzip -> tar -> Rust source project",
+  "files": {
+    "Cargo.lock": "d031e4f840a6cf855ceeed3db5a1235793477391fd834adbdd67494778f83f8c",
+    "Cargo.toml": "a7297da30235ea62faed6a9d33723771b30ff22f0d79fb51180363e493179840",
+    "LICENSE": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+    "MRU-NAVOD.md": "bcbac2a9d0007ca74dce9b2d8204a6c0c56f8f2d10abc6594f18e138452f9128",
+    "README.md": "643b16c99aae32159dd1517658db2f99ef21c60b04992ee1e93554fea88ee154",
+    "applet/Cargo.toml": "132362b3e3fdbb96493e869564630963fca16cca76e9c87ed665a3cff59147b6",
+    "applet/data/io.github.cosmic-ext-applet-app-switcher-symbolic.svg": "a7f9d0792785dbf5fb9d9a8b96ec671ff6d3629cc5d9d5f3fb42b48b49e4ad32",
+    "applet/data/io.github.cosmic-ext-applet-app-switcher.desktop": "9536b3ce9e72766bc64f9d7b70f9f32127ed4cbc844bbc9f769ca1acc47152bf",
+    "applet/data/io.github.cosmic-ext-applet-app-switcher.metainfo.xml": "39081de4bb8178f21b478a38dde1b4b76ecdb18179fdf0d37f251a22543e403e",
+    "applet/src/app.rs": "c1a61aa6ed6d3d23653ecc3893f91dae4eb4fb7fa306bda02997f1d1a132ee4d",
+    "applet/src/main.rs": "e4153f977c4255cc96b53586a46576be0f29d7604214f48c4384b67aa6f49434",
+    "config/Cargo.toml": "ac94ec557b83e3bfe67aa737909854079003dfa9fc687ce2d5ef414c8f5073f3",
+    "config/src/lib.rs": "5f70ae87f368b4e39a458d82cec90cb6daa1899034c72cbb6b9d784206fc65a0",
+    "src/app.rs": "cac3d38933e9e1a6d57d5a717a6f99d302365141a43ed2e01fabd1f90e3a2d2c",
+    "src/icons.rs": "b2bfffd31a7e84f7961a368ca82c0bec1af64b79703c6ca54e42a2ce5b2fab13",
+    "src/main.rs": "5ce40ddf8a0c4760288836485aa89ab3a6a98117b54c6d9a178dd172e9678ed3",
+    "src/mru.rs": "29b4d169ad4c18ed3b316912300b7d6c1de7faeb428e4fed9449f2538b0d93c2",
+    "src/ui.rs": "e4f8c500368655bb8069156dc1ae9cb5226462e4b303557fa9208c44db30f5e1",
+    "src/wayland.rs": "997eea8ea68ba1ce7586c143e2bc122755f237f0553aae7f317204288a71f8d5"
+  }
+}

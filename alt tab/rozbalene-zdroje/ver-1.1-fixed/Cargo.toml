@@ -1,0 +1,48 @@
+[workspace]
+members = [".", "applet", "config"]
+resolver = "2"
+
+# Single source of truth for the release version. Bump this together with the newest
+# <release> entry in applet/data/…metainfo.xml — the store shows the metainfo version,
+# and .github/workflows/release.yml fails the release if the two disagree with the tag.
+[workspace.package]
+version = "0.1.5"
+
+[package]
+name = "cosmic-ext-app-switcher"
+version.workspace = true
+edition = "2024"
+
+[[bin]]
+name = "cosmic-ext-app-switcher"
+path = "src/main.rs"
+
+[dependencies]
+libcosmic = { git = "https://github.com/pop-os/libcosmic", rev = "417923f", default-features = false, features = [
+    "wayland",
+    "tokio",
+    "winit",
+    "multi-window",
+] }
+cosmic-protocols = { git = "https://github.com/pop-os/cosmic-protocols", default-features = false, features = [
+    "client",
+], rev = "c253ec1" }
+freedesktop-desktop-entry = "0.5"
+switcher-config = { path = "config" }
+
+wayland-client = "0.31"
+
+tokio      = { version = "1", features = ["net", "io-util", "time"] }
+clap       = { version = "4", features = ["derive"] }
+anyhow     = "1"
+log        = "0.4"
+env_logger = "0.11"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+libc = "0.2"
+
+[profile.release]
+strip     = true
+opt-level = "z"
+lto       = true
+codegen-units = 1
