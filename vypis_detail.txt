@@ -1,0 +1,2952 @@
+=== CARGO.LOCK PACKAGES ===
+version = 4
+name = "adler2"
+version = "2.0.1"
+name = "anstream"
+version = "1.0.0"
+name = "anstyle"
+version = "1.0.14"
+name = "anstyle-parse"
+version = "1.0.0"
+name = "anstyle-query"
+version = "1.1.5"
+name = "anstyle-wincon"
+version = "3.0.11"
+name = "bitflags"
+version = "1.3.2"
+name = "bitflags"
+version = "2.13.2"
+name = "bytemuck"
+version = "1.25.2"
+name = "bytemuck_derive"
+version = "1.12.0"
+name = "calloop"
+version = "0.14.4"
+name = "calloop-wayland-source"
+version = "0.4.1"
+name = "cc"
+version = "1.4.5"
+name = "cfg-if"
+version = "1.0.4"
+name = "clap"
+version = "4.6.6"
+name = "clap_builder"
+version = "4.6.6"
+name = "clap_derive"
+version = "4.6.4"
+name = "clap_lex"
+version = "1.1.0"
+name = "colorchoice"
+version = "1.0.5"
+name = "concurrent-queue"
+version = "2.5.0"
+name = "cosmic-client-toolkit"
+version = "0.2.0"
+name = "cosmic-protocols"
+version = "0.2.0"
+name = "cosmic-ws-switcher"
+version = "0.1.0"
+name = "cosmicmsg"
+version = "0.1.0"
+name = "crc32fast"
+version = "1.5.1"
+name = "crossbeam-utils"
+version = "0.8.23"
+name = "cursor-icon"
+version = "1.2.0"
+name = "downcast-rs"
+version = "1.2.1"
+name = "errno"
+version = "0.3.14"
+name = "fdeflate"
+version = "0.3.7"
+name = "find-msvc-tools"
+version = "0.1.12"
+name = "flate2"
+version = "1.1.10"
+name = "heck"
+version = "0.5.0"
+name = "hermit-abi"
+version = "0.5.3"
+name = "is_terminal_polyfill"
+version = "1.70.2"
+name = "itoa"
+version = "1.0.18"
+name = "libc"
+version = "0.2.189"
+name = "linux-raw-sys"
+version = "0.12.1"
+name = "log"
+version = "0.4.34"
+name = "memchr"
+version = "2.8.3"
+name = "memmap2"
+version = "0.9.11"
+name = "miniz_oxide"
+version = "0.8.9"
+name = "miniz_oxide"
+version = "0.9.1"
+name = "once_cell_polyfill"
+version = "1.70.2"
+name = "pin-project-lite"
+version = "0.2.17"
+name = "pkg-config"
+version = "0.3.34"
+name = "png"
+version = "0.17.16"
+name = "polling"
+version = "3.11.0"
+name = "proc-macro2"
+version = "1.0.107"
+name = "quick-xml"
+version = "0.41.0"
+name = "quote"
+version = "1.0.47"
+name = "rustix"
+version = "1.1.4"
+name = "serde"
+version = "1.0.229"
+name = "serde_core"
+version = "1.0.229"
+name = "serde_derive"
+version = "1.0.229"
+name = "serde_json"
+version = "1.0.151"
+name = "shlex"
+version = "2.0.1"
+name = "simd-adler32"
+version = "0.3.10"
+name = "slab"
+version = "0.4.12"
+name = "smallvec"
+version = "1.16.0"
+name = "smithay-client-toolkit"
+version = "0.20.0"
+name = "strsim"
+version = "0.11.1"
+name = "syn"
+version = "3.0.5"
+name = "thiserror"
+version = "2.0.20"
+name = "thiserror-impl"
+version = "2.0.20"
+name = "tracing"
+version = "0.1.44"
+name = "tracing-core"
+version = "0.1.36"
+name = "unicode-ident"
+version = "1.0.24"
+name = "utf8parse"
+version = "0.2.2"
+name = "wayland-backend"
+version = "0.3.17"
+name = "wayland-client"
+version = "0.31.15"
+name = "wayland-csd-frame"
+version = "0.3.0"
+name = "wayland-cursor"
+version = "0.31.14"
+name = "wayland-protocols"
+version = "0.32.13"
+name = "wayland-protocols-experimental"
+version = "20250721.0.1"
+name = "wayland-protocols-misc"
+version = "0.3.12"
+name = "wayland-protocols-wlr"
+version = "0.3.12"
+name = "wayland-scanner"
+version = "0.31.11"
+name = "wayland-server"
+version = "0.31.14"
+name = "wayland-sys"
+version = "0.31.11"
+name = "windows-link"
+version = "0.2.1"
+name = "windows-sys"
+version = "0.61.2"
+name = "xcursor"
+version = "0.3.11"
+name = "xkbcommon"
+version = "0.8.0"
+name = "xkeysym"
+version = "0.2.1"
+name = "zlib-rs"
+version = "0.6.7"
+name = "zmij"
+version = "1.0.23"
+
+=== COSMICMSG SOURCE ===
+--- /home/jirkadolezal/.cargo/git/checkouts/cosmicmsg-afdd0e089929c82f/881d2ca/src/lib.rs ---
+//! # cosmicmsg
+//!
+//! A library and CLI tool for querying and controlling the
+//! [COSMIC desktop](https://github.com/pop-os/cosmic-epoch) compositor via
+//! Wayland protocols.
+//!
+//! ## Quick start
+//!
+//! ```no_run
+//! use cosmicmsg::{collect_state, Error};
+//!
+//! fn main() -> Result<(), Error> {
+//!     let (state, _eq) = collect_state()?;
+//!
+//!     for ws in state.workspaces() {
+//!         println!("{}: tiling={:?}", ws.name, ws.tiling);
+//!     }
+//!
+//!     for toplevel in state.toplevels() {
+//!         println!("{} ({})", toplevel.title, toplevel.app_id);
+//!     }
+//!
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ## Subscribe to live events
+//!
+//! ```no_run
+//! use cosmicmsg::{subscribe, MonitorEvent, Error};
+//!
+//! fn main() -> Result<(), Error> {
+//!     subscribe(|event| {
+//!         match event {
+//!             MonitorEvent::WindowOpened { window } => {
+//!                 println!("opened: {} ({})", window.title, window.app_id);
+//!             }
+//!             MonitorEvent::WorkspaceUpdated { workspace } => {
+//!                 if workspace.active {
+//!                     println!("active workspace: {}", workspace.name);
+//!                 }
+//!             }
+//!             _ => {}
+//!         }
+//!         Ok(())
+//!     })
+//! }
+//! ```
+//!
+//! ## Screen capture
+//!
+//! ```no_run
+//! use cosmicmsg::{collect_state, capture_output, Error};
+//! use cosmic_client_toolkit::screencopy::CaptureSource;
+//!
+//! fn main() -> Result<(), Error> {
+//!     let (mut state, mut eq) = collect_state()?;
+//!     let output = state.first_output().ok_or_else(|| Error::NotFound("no outputs".into()))?;
+//!     let mut buf = Vec::new();
+//!     capture_output(&mut state, &mut eq, output, &mut buf, false, None)?;
+//!     std::fs::write("screenshot.png", &buf).unwrap();
+//!     Ok(())
+//! }
+//! ```
+
+pub mod capture;
+pub mod connection;
+pub mod monitor;
+pub mod output;
+pub mod state;
+pub mod toplevels;
+pub mod workspaces;
+
+// ── Core types ────────────────────────────────────────────────────────────────
+
+pub use state::AppData;
+pub use wayland_client::EventQueue;
+
+/// Controls how query functions format their output when printing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OutputFormat {
+    /// Human-readable text.
+    Human,
+    /// Compact single-line JSON.
+    Json,
+    /// Indented, pretty-printed JSON.
+    PrettyJson,
+}
+
+/// Error type returned by all fallible library functions.
+#[derive(Debug)]
+pub enum Error {
+    /// Failed to connect to the Wayland display.
+    Connect(String),
+    /// A required Wayland protocol is not advertised by the compositor.
+    ProtocolNotAvailable(String),
+    /// No workspace or window matched the given selector.
+    NotFound(String),
+    /// The selector matched more than one item.
+    AmbiguousMatch(String),
+    /// Any other runtime error.
+    Other(String),
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::Connect(s) => write!(f, "failed to connect to Wayland display: {s}"),
+            Error::ProtocolNotAvailable(s) => write!(f, "protocol not available: {s}"),
+            Error::NotFound(s) => write!(f, "not found: {s}"),
+            Error::AmbiguousMatch(s) => write!(f, "ambiguous match: {s}"),
+            Error::Other(s) => write!(f, "{s}"),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+// ── Data types ────────────────────────────────────────────────────────────────
+
+pub use capture::RawCapture;
+pub use output::{ModeJson as OutputMode, OutputJson, TreeOutput, TreeWorkspace};
+pub use toplevels::ToplevelJson;
+pub use workspaces::WorkspaceJson;
+
+/// A live compositor event emitted by [`subscribe`].
+pub use monitor::MonitorEvent;
+
+// ── Connection / state collection ─────────────────────────────────────────────
+
+/// Connect to the COSMIC compositor and collect the initial snapshot of
+/// workspaces, toplevels, and outputs.
+///
+/// Returns `(AppData, EventQueue)`. The `EventQueue` is needed to flush
+/// requests after calling mutation functions.
+pub fn collect_state() -> Result<(AppData, EventQueue<AppData>), Error> {
+    connection::collect_state()
+}
+
+/// Subscribe to live compositor events. Calls `handler` for every event
+/// received. Blocks until `handler` returns `Err`, or the compositor disconnects.
+///
+/// To stop the loop from inside the handler return `Err(...)`.
+pub fn subscribe(
+    handler: impl FnMut(MonitorEvent) -> Result<(), Error> + 'static,
+) -> Result<(), Error> {
+    connection::run_monitor_with_handler(handler)
+}
+
+// ── Query helpers on AppData ──────────────────────────────────────────────────
+
+impl AppData {
+    /// All workspaces across all outputs, sorted by group then coordinates.
+    pub fn workspaces(&self) -> Vec<WorkspaceJson> {
+        let mut ws: Vec<WorkspaceJson> = self
+            .workspace_state
+            .workspaces()
+            .map(|w| workspaces::workspace_to_json(w, self))
+            .collect();
+        ws.sort_by(|a, b| {
+            a.group_id
+                .cmp(&b.group_id)
+                .then(a.coordinates.cmp(&b.coordinates))
+        });
+        ws
+    }
+
+    /// All open windows (toplevels).
+    pub fn toplevels(&self) -> Vec<ToplevelJson> {
+        self.toplevel_info_state
+            .toplevels()
+            .map(|t| toplevels::toplevel_to_json(t, self))
+            .collect()
+    }
+
+    /// All connected outputs (monitors).
+    pub fn outputs(&self) -> Vec<OutputJson> {
+        self.output_state
+            .outputs()
+            .filter_map(|o| self.output_state.info(&o))
+            .map(|info| output::output_info_to_json(&info))
+            .collect()
+    }
+
+    /// The full output→workspace→window tree.
+    pub fn tree(&self) -> Vec<TreeOutput> {
+        output::build_tree(self)
+    }
+
+    /// The first available output, if any.
+    pub fn first_output(&self) -> Option<wayland_client::protocol::wl_output::WlOutput> {
+        self.output_state.outputs().next()
+    }
+}
+
+// ── Workspace mutations ───────────────────────────────────────────────────────
+
+/// Activate (switch to) a workspace by name or id.
+pub fn workspace_activate(
+    state: &AppData,
+    eq: &mut EventQueue<AppData>,
+    selector: &str,
+) -> Result<(), Error> {
+    let ws = workspaces::resolve_workspace_pub(state, selector)?;
+    ws.handle.activate();
+    commit_workspaces(state, eq)
+}
+
+/// Rename a workspace.
+pub fn workspace_rename(
+    state: &AppData,
+    eq: &mut EventQueue<AppData>,
+    selector: &str,
+    new_name: &str,
+) -> Result<(), Error> {
+    let ws = workspaces::resolve_workspace_pub(state, selector)?;
+    ws.cosmic_handle
+        .as_ref()
+        .ok_or_else(|| Error::ProtocolNotAvailable("zcosmic-workspace-v2 not available".into()))?
+        .rename(new_name.to_string());
+    commit_workspaces(state, eq)
+}
+
+/// Set the tiling state of a workspace. Pass `selector = "active"` to target
+/// the currently active workspace.
+pub fn workspace_set_tiling(
+    state: &AppData,
+    eq: &mut EventQueue<AppData>,
+    selector: &str,
+    enabled: bool,
+) -> Result<(), Error> {
+    use cosmic_protocols::workspace::v2::client::zcosmic_workspace_handle_v2::TilingState;
+    let ws = if selector.eq_ignore_ascii_case("active") {
+        workspaces::resolve_active_workspace(state)?
+    } else {
+        workspaces::resolve_workspace_pub(state, selector)?
+    };
+    let cosmic = ws
+        .cosmic_handle
+        .as_ref()
+        .ok_or_else(|| Error::ProtocolNotAvailable("zcosmic-workspace-v2 not available".into()))?;
+    let tiling = if enabled {
+        TilingState::TilingEnabled
+    } else {
+        TilingState::FloatingOnly
+    };
+    cosmic.set_tiling_state(tiling);
+    commit_workspaces(state, eq)
+}
+
+/// Set the tiling default for all currently empty workspaces.
+pub fn workspace_set_tiling_default(
+    state: &AppData,
+    eq: &mut EventQueue<AppData>,
+    enabled: bool,
+) -> Result<(), Error> {
+    use cosmic_protocols::workspace::v2::client::zcosmic_workspace_handle_v2::TilingState;
+    let occupied: std::collections::HashSet<_> = state
+        .toplevel_info_state
+        .toplevels()
+        .flat_map(|t| t.workspace.iter().cloned())
+        .collect();
+    let tiling = if enabled {
+        TilingState::TilingEnabled
+    } else {
+        TilingState::FloatingOnly
+    };
+    for ws in state.workspace_state.workspaces() {
+        if !occupied.contains(&ws.handle) {
+            if let Some(cosmic) = &ws.cosmic_handle {
+                cosmic.set_tiling_state(tiling);
+            }
+        }
+    }
+    commit_workspaces(state, eq)
+}
+
+/// Pin a workspace.
+pub fn workspace_pin(
+    state: &AppData,
+    eq: &mut EventQueue<AppData>,
+    selector: &str,
+) -> Result<(), Error> {
+    let ws = workspaces::resolve_workspace_pub(state, selector)?;
+    ws.cosmic_handle
+        .as_ref()
+        .ok_or_else(|| Error::ProtocolNotAvailable("zcosmic-workspace-v2 not available".into()))?
+        .pin();
+    commit_workspaces(state, eq)
+}
+
+/// Unpin a workspace.
+pub fn workspace_unpin(
+    state: &AppData,
+    eq: &mut EventQueue<AppData>,
+    selector: &str,
+) -> Result<(), Error> {
+    let ws = workspaces::resolve_workspace_pub(state, selector)?;
+    ws.cosmic_handle
+        .as_ref()
+        .ok_or_else(|| Error::ProtocolNotAvailable("zcosmic-workspace-v2 not available".into()))?
+        .unpin();
+    commit_workspaces(state, eq)
+}
+
+// ── Window (toplevel) mutations ───────────────────────────────────────────────
+
+/// Activate (focus) a window by title, app-id, or identifier.
+pub fn window_activate(
+    state: &mut AppData,
+    eq: &mut EventQueue<AppData>,
+    selector: &str,
+) -> Result<(), Error> {
+    let manager = toplevel_manager(state)?;
+    let t = toplevels::resolve_toplevel_pub(state, selector)?;
+    let cosmic = cosmic_handle(t)?;
+    let seat = state
+        .seat_state
+        .seats()
+        .next()
+        .ok_or_else(|| Error::Other("no seat available".into()))?;
+    manager.activate(cosmic, &seat);
+    eq.flush().map_err(|e| Error::Other(e.to_string()))
+}
+
+/// Close a window.
+pub fn window_close(
+    state: &mut AppData,
+    eq: &mut EventQueue<AppData>,
+    selector: &str,
+) -> Result<(), Error> {
+    let manager = toplevel_manager(state)?;
+    let t = toplevels::resolve_toplevel_pub(state, selector)?;
+    manager.close(cosmic_handle(t)?);
+    eq.flush().map_err(|e| Error::Other(e.to_string()))
+}
+
+/// Maximize a window.
+pub fn window_maximize(
+    state: &mut AppData,
+    eq: &mut EventQueue<AppData>,
+    selector: &str,
+) -> Result<(), Error> {
+    let manager = toplevel_manager(state)?;
+    let t = toplevels::resolve_toplevel_pub(state, selector)?;
+    manager.set_maximized(cosmic_handle(t)?);
+    eq.flush().map_err(|e| Error::Other(e.to_string()))
+}
+
+/// Unmaximize a window.
+pub fn window_unmaximize(
+    state: &mut AppData,
+    eq: &mut EventQueue<AppData>,
+    selector: &str,
+) -> Result<(), Error> {
+    let manager = toplevel_manager(state)?;
+    let t = toplevels::resolve_toplevel_pub(state, selector)?;
+    manager.unset_maximized(cosmic_handle(t)?);
+    eq.flush().map_err(|e| Error::Other(e.to_string()))
+}
+
+/// Minimize a window.
+pub fn window_minimize(
+    state: &mut AppData,
+    eq: &mut EventQueue<AppData>,
+    selector: &str,
+) -> Result<(), Error> {
+    let manager = toplevel_manager(state)?;
+    let t = toplevels::resolve_toplevel_pub(state, selector)?;
+    manager.set_minimized(cosmic_handle(t)?);
+    eq.flush().map_err(|e| Error::Other(e.to_string()))
+}
+
+/// Unminimize a window.
+pub fn window_unminimize(
+    state: &mut AppData,
+    eq: &mut EventQueue<AppData>,
+    selector: &str,
+) -> Result<(), Error> {
+    let manager = toplevel_manager(state)?;
+    let t = toplevels::resolve_toplevel_pub(state, selector)?;
+    manager.unset_minimized(cosmic_handle(t)?);
+    eq.flush().map_err(|e| Error::Other(e.to_string()))
+}
+
+/// Fullscreen a window.
+pub fn window_fullscreen(
+    state: &mut AppData,
+    eq: &mut EventQueue<AppData>,
+    selector: &str,
+) -> Result<(), Error> {
+    let manager = toplevel_manager(state)?;
+    let t = toplevels::resolve_toplevel_pub(state, selector)?;
+    manager.set_fullscreen(cosmic_handle(t)?, None);
+    eq.flush().map_err(|e| Error::Other(e.to_string()))
+}
+
+/// Exit fullscreen on a window.
+pub fn window_unfullscreen(
+    state: &mut AppData,
+    eq: &mut EventQueue<AppData>,
+    selector: &str,
+) -> Result<(), Error> {
+    let manager = toplevel_manager(state)?;
+    let t = toplevels::resolve_toplevel_pub(state, selector)?;
+    manager.unset_fullscreen(cosmic_handle(t)?);
+    eq.flush().map_err(|e| Error::Other(e.to_string()))
+}
+
+/// Make a window sticky (visible on all workspaces).
+pub fn window_set_sticky(
+    state: &mut AppData,
+    eq: &mut EventQueue<AppData>,
+    selector: &str,
+) -> Result<(), Error> {
+    let manager = toplevel_manager(state)?;
+    let t = toplevels::resolve_toplevel_pub(state, selector)?;
+    manager.set_sticky(cosmic_handle(t)?);
+    eq.flush().map_err(|e| Error::Other(e.to_string()))
+}
+
+/// Remove sticky from a window.
+pub fn window_unset_sticky(
+    state: &mut AppData,
+    eq: &mut EventQueue<AppData>,
+    selector: &str,
+) -> Result<(), Error> {
+    let manager = toplevel_manager(state)?;
+    let t = toplevels::resolve_toplevel_pub(state, selector)?;
+    manager.unset_sticky(cosmic_handle(t)?);
+    eq.flush().map_err(|e| Error::Other(e.to_string()))
+}
+
+/// Move a window to a workspace.
+pub fn window_move_to_workspace(
+    state: &mut AppData,
+    eq: &mut EventQueue<AppData>,
+    window_selector: &str,
+    workspace_selector: &str,
+) -> Result<(), Error> {
+    let manager = toplevel_manager(state)?;
+    let t = toplevels::resolve_toplevel_pub(state, window_selector)?;
+    let cosmic = cosmic_handle(t)?;
+    let ws = workspaces::resolve_workspace_pub(state, workspace_selector)?;
+    let ws_handle = ws.handle.clone();
+    let output = state
+        .workspace_state
+        .workspace_groups()
+        .find(|g| g.workspaces.contains(&ws_handle))
+        .and_then(|g| g.outputs.first().cloned())
+        .ok_or_else(|| Error::Other("target workspace has no associated output".into()))?;
+    manager.move_to_ext_workspace(cosmic, &ws_handle, &output);
+    eq.flush().map_err(|e| Error::Other(e.to_string()))
+}
+
+// ── Screen capture ────────────────────────────────────────────────────────────
+
+/// Capture an output (monitor) as a PNG written to `out`.
+///
+/// Pass `scale` to resize before encoding (e.g. `Some(0.5)` for 50%).
+pub fn capture_output(
+    state: &mut AppData,
+    eq: &mut EventQueue<AppData>,
+    output: wayland_client::protocol::wl_output::WlOutput,
+    out: &mut dyn std::io::Write,
+    with_cursor: bool,
+    scale: Option<f64>,
+) -> Result<(), Error> {
+    capture::capture_to_png(
+        state,
+        eq,
+        cosmic_client_toolkit::screencopy::CaptureSource::Output(output),
+        out,
+        with_cursor,
+        scale,
+    )
+}
+
+/// Capture an output (monitor) as raw RGBA8888 pixels.
+///
+/// Returns a [`RawCapture`] with the pixel data, width, and height.
+/// Call [`RawCapture::encode_png`] to encode, or [`RawCapture::scale`] to resize first.
+pub fn capture_output_raw(
+    state: &mut AppData,
+    eq: &mut EventQueue<AppData>,
+    output: wayland_client::protocol::wl_output::WlOutput,
+    with_cursor: bool,
+) -> Result<RawCapture, Error> {
+    capture::capture_raw(
+        state,
+        eq,
+        cosmic_client_toolkit::screencopy::CaptureSource::Output(output),
+        with_cursor,
+    )
+}
+
+/// Capture a window (toplevel) as a PNG written to `out`.
+pub fn capture_window(
+    state: &mut AppData,
+    eq: &mut EventQueue<AppData>,
+    selector: &str,
+    out: &mut dyn std::io::Write,
+    with_cursor: bool,
+    scale: Option<f64>,
+) -> Result<(), Error> {
+    let handle = toplevels::resolve_toplevel_pub(state, selector)?
+        .foreign_toplevel
+        .clone();
+    capture::capture_to_png(
+        state,
+        eq,
+        cosmic_client_toolkit::screencopy::CaptureSource::Toplevel(handle),
+        out,
+        with_cursor,
+        scale,
+    )
+}
+
+/// Capture a window (toplevel) as raw RGBA8888 pixels.
+pub fn capture_window_raw(
+    state: &mut AppData,
+    eq: &mut EventQueue<AppData>,
+    selector: &str,
+    with_cursor: bool,
+) -> Result<RawCapture, Error> {
+    let handle = toplevels::resolve_toplevel_pub(state, selector)?
+        .foreign_toplevel
+        .clone();
+    capture::capture_raw(
+        state,
+        eq,
+        cosmic_client_toolkit::screencopy::CaptureSource::Toplevel(handle),
+        with_cursor,
+    )
+}
+
+/// Capture a workspace as a PNG written to `out`.
+pub fn capture_workspace(
+    state: &mut AppData,
+    eq: &mut EventQueue<AppData>,
+    selector: &str,
+    out: &mut dyn std::io::Write,
+    with_cursor: bool,
+    scale: Option<f64>,
+) -> Result<(), Error> {
+    let handle = workspaces::resolve_workspace_pub(state, selector)?
+        .handle
+        .clone();
+    capture::capture_to_png(
+        state,
+        eq,
+        cosmic_client_toolkit::screencopy::CaptureSource::Workspace(handle),
+        out,
+        with_cursor,
+        scale,
+    )
+}
+
+/// Capture a workspace as raw RGBA8888 pixels.
+pub fn capture_workspace_raw(
+    state: &mut AppData,
+    eq: &mut EventQueue<AppData>,
+    selector: &str,
+    with_cursor: bool,
+) -> Result<RawCapture, Error> {
+    let handle = workspaces::resolve_workspace_pub(state, selector)?
+        .handle
+        .clone();
+    capture::capture_raw(
+        state,
+        eq,
+        cosmic_client_toolkit::screencopy::CaptureSource::Workspace(handle),
+        with_cursor,
+    )
+}
+
+// ── Internal helpers ──────────────────────────────────────────────────────────
+
+fn commit_workspaces(state: &AppData, eq: &mut EventQueue<AppData>) -> Result<(), Error> {
+    if let Ok(mgr) = state.workspace_state.workspace_manager().get() {
+        mgr.commit();
+    }
+    eq.flush().map_err(|e| Error::Other(e.to_string()))
+}
+
+fn toplevel_manager(
+    state: &AppData,
+) -> Result<
+    cosmic_protocols::toplevel_management::v1::client::zcosmic_toplevel_manager_v1::ZcosmicToplevelManagerV1,
+    Error,
+>{
+    Ok(state
+        .toplevel_manager_state
+        .as_ref()
+        .ok_or_else(|| {
+            Error::ProtocolNotAvailable("zcosmic-toplevel-management-v1 not available".into())
+        })?
+        .manager
+        .clone())
+}
+
+fn cosmic_handle(
+    t: &cosmic_client_toolkit::toplevel_info::ToplevelInfo,
+) -> Result<&cosmic_protocols::toplevel_info::v1::client::zcosmic_toplevel_handle_v1::ZcosmicToplevelHandleV1, Error>
+{
+    t.cosmic_toplevel
+        .as_ref()
+        .ok_or_else(|| Error::ProtocolNotAvailable("zcosmic-toplevel-info-v1 not available".into()))
+}
+--- /home/jirkadolezal/.cargo/git/checkouts/cosmicmsg-afdd0e089929c82f/881d2ca/src/capture/mod.rs ---
+use std::io::Write;
+
+use crate::{
+    Error,
+    state::{AppData, CaptureResult},
+};
+use cosmic_client_toolkit::screencopy::{
+    CaptureOptions, CaptureSource, Formats, Rect, ScreencopyFrameData, ScreencopyFrameDataExt,
+    ScreencopySessionData, ScreencopySessionDataExt,
+};
+use smithay_client_toolkit::shm::slot::SlotPool;
+use wayland_client::{EventQueue, protocol::wl_shm};
+
+// ── Protocol user-data newtypes ───────────────────────────────────────────────
+
+#[derive(Default)]
+pub struct SessionData(ScreencopySessionData);
+impl ScreencopySessionDataExt for SessionData {
+    fn screencopy_session_data(&self) -> &ScreencopySessionData {
+        &self.0
+    }
+}
+
+#[derive(Default)]
+pub struct FrameData(ScreencopyFrameData);
+impl ScreencopyFrameDataExt for FrameData {
+    fn screencopy_frame_data(&self) -> &ScreencopyFrameData {
+        &self.0
+    }
+}
+
+// ── Supported shm formats, in preference order ───────────────────────────────
+
+const PREFERRED_FORMATS: &[wl_shm::Format] = &[
+    wl_shm::Format::Abgr8888,
+    wl_shm::Format::Argb8888,
+    wl_shm::Format::Xbgr8888,
+    wl_shm::Format::Xrgb8888,
+];
+
+fn pick_format(formats: &Formats) -> Result<wl_shm::Format, Error> {
+    PREFERRED_FORMATS
+        .iter()
+        .find(|f| formats.shm_formats.contains(f))
+        .copied()
+        .ok_or_else(|| {
+            Error::Other(format!(
+                "no supported shm format; compositor offers: {:?}",
+                formats.shm_formats
+            ))
+        })
+}
+
+// ── Format conversion to RGBA8888 ─────────────────────────────────────────────
+//
+// Wayland/DRM fourcc names encode the 32-bit pixel from MSB to LSB.
+// On little-endian x86, byte[0] is the LSB:
+//
+//   Abgr8888: A[31:24] B[23:16] G[15:8] R[7:0]  → mem: [R, G, B, A]  no swap
+//   Argb8888: A[31:24] R[23:16] G[15:8] B[7:0]  → mem: [B, G, R, A]  swap R↔B
+//   Xbgr8888: X[31:24] B[23:16] G[15:8] R[7:0]  → mem: [R, G, B, X]  no swap
+//   Xrgb8888: X[31:24] R[23:16] G[15:8] B[7:0]  → mem: [B, G, R, X]  swap R↔B
+//
+// Force A=255: the compositor may send A=0 for composited-transparent areas.
+
+fn to_rgba(mut pixels: Vec<u8>, fmt: wl_shm::Format) -> Vec<u8> {
+    let needs_rb_swap = matches!(fmt, wl_shm::Format::Argb8888 | wl_shm::Format::Xrgb8888);
+    for chunk in pixels.chunks_exact_mut(4) {
+        if needs_rb_swap {
+            chunk.swap(0, 2);
+        }
+        chunk[3] = 255;
+    }
+    pixels
+}
+
+// ── Event-loop helper ─────────────────────────────────────────────────────────
+
+/// Pump the event loop up to `max_rounds` times until `predicate` returns
+/// `Ok(true)` (done) or `Err(e)` (hard failure). Returns `Ok(())` in both the
+/// success and timeout cases; callers verify the outcome themselves.
+fn wait_for(
+    app_data: &mut AppData,
+    event_queue: &mut EventQueue<AppData>,
+    max_rounds: usize,
+    mut predicate: impl FnMut(&AppData) -> Result<bool, Error>,
+) -> Result<(), Error> {
+    for _ in 0..max_rounds {
+        event_queue
+            .blocking_dispatch(app_data)
+            .map_err(|e| Error::Other(e.to_string()))?;
+        match predicate(app_data) {
+            Ok(true) => return Ok(()),
+            Ok(false) => {}
+            Err(e) => return Err(e),
+        }
+    }
+    Ok(())
+}
+
+// ── Raw capture result ────────────────────────────────────────────────────────
+
+/// Raw RGBA8888 pixels from a capture, before any PNG encoding.
+///
+/// Each pixel is 4 bytes in `[R, G, B, A]` order. Alpha is always 255.
+/// Total buffer size is `width * height * 4` bytes.
+#[allow(dead_code)] // used via the lib crate's capture_*_raw functions
+pub struct RawCapture {
+    pub width: u32,
+    pub height: u32,
+    /// Raw RGBA8888 pixel data, row-major, top-to-bottom.
+    pub data: Vec<u8>,
+}
+
+#[allow(dead_code)] // methods used via the lib crate
+impl RawCapture {
+    /// Resize the capture by `scale` and return a new `RawCapture`.
+    /// Equivalent to passing `--scale` on the CLI.
+    pub fn scale(&self, factor: f64) -> Self {
+        let (w, h, data) = maybe_scale(self.data.clone(), self.width, self.height, Some(factor));
+        RawCapture {
+            width: w,
+            height: h,
+            data,
+        }
+    }
+
+    /// Encode the raw pixels as PNG, writing into `out`.
+    pub fn encode_png(&self, out: &mut dyn Write) -> Result<(), Error> {
+        encode_png(out, self.width, self.height, &self.data)
+    }
+}
+
+// ── Capture pipeline ──────────────────────────────────────────────────────────
+
+/// Capture a single frame from `source` and return raw RGBA8888 pixels.
+///
+/// Use this when you want to process the pixel data directly rather than
+/// writing a PNG. Call [`RawCapture::encode_png`] or [`RawCapture::scale`]
+/// on the result as needed.
+#[allow(dead_code)] // used via the lib crate
+pub fn capture_raw(
+    app_data: &mut AppData,
+    event_queue: &mut EventQueue<AppData>,
+    source: CaptureSource,
+    with_cursor: bool,
+) -> Result<RawCapture, Error> {
+    let (width, height, data) = capture_rgba(app_data, event_queue, source, with_cursor)?;
+    Ok(RawCapture {
+        width,
+        height,
+        data,
+    })
+}
+
+/// Capture a single frame from `source` and write it as a PNG to `out`.
+/// Pass `scale` to resize the image by that factor before encoding.
+pub fn capture_to_png(
+    app_data: &mut AppData,
+    event_queue: &mut EventQueue<AppData>,
+    source: CaptureSource,
+    out: &mut dyn Write,
+    with_cursor: bool,
+    scale: Option<f64>,
+) -> Result<(), Error> {
+    let (width, height, rgba) = capture_rgba(app_data, event_queue, source, with_cursor)?;
+    let (out_w, out_h, pixels) = maybe_scale(rgba, width, height, scale);
+    encode_png(out, out_w, out_h, &pixels)
+}
+
+/// Run the full screencopy pipeline and return raw RGBA8888 pixels plus dimensions.
+fn capture_rgba(
+    app_data: &mut AppData,
+    event_queue: &mut EventQueue<AppData>,
+    source: CaptureSource,
+    with_cursor: bool,
+) -> Result<(u32, u32, Vec<u8>), Error> {
+    let opts = if with_cursor {
+        CaptureOptions::PaintCursors
+    } else {
+        CaptureOptions::empty()
+    };
+    let qh = event_queue.handle();
+    let capturer = app_data.screencopy_state.capturer().clone();
+
+    // ── 1. Open session, collect buffer constraints ───────────────────────────
+    app_data.capture_formats = None;
+    app_data.capture_result = None;
+
+    let session = capturer
+        .create_session(&source, opts, &qh, SessionData::default())
+        .map_err(|e| Error::ProtocolNotAvailable(format!("capture source not supported: {e}")))?;
+
+    wait_for(app_data, event_queue, 200, |d| {
+        if d.capture_formats.is_some() {
+            return Ok(true);
+        }
+        if matches!(d.capture_result, Some(CaptureResult::Stopped)) {
+            return Err(Error::Other(
+                "capture session stopped before constraints".into(),
+            ));
+        }
+        Ok(false)
+    })?;
+
+    let formats = app_data
+        .capture_formats
+        .take()
+        .ok_or_else(|| Error::Other("compositor never advertised buffer constraints".into()))?;
+
+    let (width, height) = formats.buffer_size;
+    if width == 0 || height == 0 {
+        return Err(Error::Other("compositor reported zero-size buffer".into()));
+    }
+
+    // ── 2. Allocate shm buffer ────────────────────────────────────────────────
+    let fmt = pick_format(&formats)?;
+    let stride = width * 4;
+    let buf_size = (stride * height) as usize;
+
+    let mut pool = SlotPool::new(buf_size, &app_data.shm_state)
+        .map_err(|e| Error::Other(format!("shm pool allocation failed: {e}")))?;
+
+    let (buffer, canvas) = pool
+        .create_buffer(width as i32, height as i32, stride as i32, fmt)
+        .map_err(|e| Error::Other(format!("shm buffer creation failed: {e}")))?;
+
+    // ── 3. Request and await the frame ────────────────────────────────────────
+    app_data.capture_result = None;
+    let _frame = session.capture(
+        buffer.wl_buffer(),
+        &[Rect {
+            x: 0,
+            y: 0,
+            width: width as i32,
+            height: height as i32,
+        }],
+        &qh,
+        FrameData::default(),
+    );
+
+    wait_for(app_data, event_queue, 500, |d| match &d.capture_result {
+        Some(CaptureResult::Ready) => Ok(true),
+        Some(CaptureResult::Failed(msg)) => Err(Error::Other(format!("capture failed: {msg}"))),
+        Some(CaptureResult::Stopped) => {
+            Err(Error::Other("capture session stopped during frame".into()))
+        }
+        None => Ok(false),
+    })?;
+
+    if !matches!(app_data.capture_result, Some(CaptureResult::Ready)) {
+        return Err(Error::Other("capture timed out waiting for frame".into()));
+    }
+
+    // ── 4. Read pixels and normalise to RGBA8888 ──────────────────────────────
+    // Slice to exact size — SlotPool rounds allocations up to 64-byte boundaries.
+    let rgba = to_rgba(canvas[..buf_size].to_vec(), fmt);
+
+    Ok((width, height, rgba))
+}
+
+/// Resize RGBA pixels by `scale` if needed; otherwise pass through unchanged.
+fn maybe_scale(rgba: Vec<u8>, width: u32, height: u32, scale: Option<f64>) -> (u32, u32, Vec<u8>) {
+    match scale {
+        Some(factor) if (factor - 1.0).abs() > 1e-9 => {
+            let new_w = ((width as f64 * factor).round() as u32).max(1);
+            let new_h = ((height as f64 * factor).round() as u32).max(1);
+            (
+                new_w,
+                new_h,
+                resize_bilinear(&rgba, width, height, new_w, new_h),
+            )
+        }
+        _ => (width, height, rgba),
+    }
+}
+
+/// Encode an RGBA8888 buffer as PNG into `out`.
+fn encode_png(out: &mut dyn Write, width: u32, height: u32, pixels: &[u8]) -> Result<(), Error> {
+    let mut encoder = png::Encoder::new(out, width, height);
+    encoder.set_color(png::ColorType::Rgba);
+    encoder.set_depth(png::BitDepth::Eight);
+    let mut writer = encoder
+        .write_header()
+        .map_err(|e| Error::Other(format!("PNG header: {e}")))?;
+    writer
+        .write_image_data(pixels)
+        .map_err(|e| Error::Other(format!("PNG encode: {e}")))?;
+    Ok(())
+}
+
+// ── Bilinear resize ───────────────────────────────────────────────────────────
+
+/// Bilinear resize of an RGBA8888 image.
+fn resize_bilinear(src: &[u8], src_w: u32, src_h: u32, dst_w: u32, dst_h: u32) -> Vec<u8> {
+    let mut dst = vec![0u8; (dst_w * dst_h * 4) as usize];
+
+    let x_ratio = src_w as f64 / dst_w as f64;
+    let y_ratio = src_h as f64 / dst_h as f64;
+
+    for dy in 0..dst_h {
+        // Pre-compute vertical blend weights — constant across the row.
+        let sy = (dy as f64 + 0.5) * y_ratio - 0.5;
+        let y0 = sy.floor() as i64;
+        let fy = sy - y0 as f64;
+        let cy0 = y0.clamp(0, src_h as i64 - 1) as u32;
+        let cy1 = (y0 + 1).clamp(0, src_h as i64 - 1) as u32;
+
+        for dx in 0..dst_w {
+            let sx = (dx as f64 + 0.5) * x_ratio - 0.5;
+            let x0 = sx.floor() as i64;
+            let fx = sx - x0 as f64;
+            let cx0 = x0.clamp(0, src_w as i64 - 1) as u32;
+            let cx1 = (x0 + 1).clamp(0, src_w as i64 - 1) as u32;
+
+            let p00 = pixel(src, src_w, cx0, cy0);
+            let p10 = pixel(src, src_w, cx1, cy0);
+            let p01 = pixel(src, src_w, cx0, cy1);
+            let p11 = pixel(src, src_w, cx1, cy1);
+
+            let w00 = (1.0 - fx) * (1.0 - fy);
+            let w10 = fx * (1.0 - fy);
+            let w01 = (1.0 - fx) * fy;
+            let w11 = fx * fy;
+
+            let out_off = ((dy * dst_w + dx) * 4) as usize;
+            for c in 0..4usize {
+                dst[out_off + c] = (p00[c] as f64 * w00
+                    + p10[c] as f64 * w10
+                    + p01[c] as f64 * w01
+                    + p11[c] as f64 * w11)
+                    .round() as u8;
+            }
+        }
+    }
+
+    dst
+}
+
+#[inline]
+fn pixel(src: &[u8], w: u32, x: u32, y: u32) -> [u8; 4] {
+    let off = ((y * w + x) * 4) as usize;
+    src[off..off + 4].try_into().unwrap()
+}
+--- /home/jirkadolezal/.cargo/git/checkouts/cosmicmsg-afdd0e089929c82f/881d2ca/src/state.rs ---
+use cosmic_client_toolkit::{
+    screencopy::{
+        CaptureFrame, CaptureSession, FailureReason, Formats, Frame, ScreencopyHandler,
+        ScreencopyState,
+    },
+    toplevel_info::{ToplevelInfoHandler, ToplevelInfoState},
+    toplevel_management::ToplevelManagerState,
+    workspace::{WorkspaceHandler, WorkspaceState},
+};
+use cosmic_protocols::toplevel_management::v1::client::zcosmic_toplevel_manager_v1;
+use smithay_client_toolkit::{
+    output::{OutputHandler, OutputState},
+    registry::{ProvidesRegistryState, RegistryState},
+    seat::{Capability, SeatHandler, SeatState},
+    shm::{Shm, ShmHandler},
+};
+use wayland_client::{
+    Connection, QueueHandle, WEnum,
+    protocol::{wl_output, wl_seat},
+};
+use wayland_protocols::ext::{
+    foreign_toplevel_list::v1::client::ext_foreign_toplevel_handle_v1,
+    workspace::v1::client::ext_workspace_handle_v1,
+};
+
+use crate::OutputFormat;
+use crate::monitor::{MonitorEvent, print_event};
+use crate::toplevels::toplevel_to_json;
+use crate::workspaces::workspace_to_json;
+
+// ── Monitor config ─────────────────────────────────────────────────────────────
+
+pub struct MonitorConfig {
+    pub format: OutputFormat,
+    pub known_workspaces: std::collections::HashSet<ext_workspace_handle_v1::ExtWorkspaceHandleV1>,
+    pub workspace_snapshots: std::collections::HashMap<
+        ext_workspace_handle_v1::ExtWorkspaceHandleV1,
+        (String, Option<String>),
+    >,
+}
+
+impl MonitorConfig {
+    pub fn new(format: OutputFormat) -> Self {
+        Self {
+            format,
+            known_workspaces: std::collections::HashSet::new(),
+            workspace_snapshots: std::collections::HashMap::new(),
+        }
+    }
+}
+
+// ── Capture state ─────────────────────────────────────────────────────────────
+
+pub enum CaptureResult {
+    /// Frame is ready; data was written into the shm buffer (caller reads it directly).
+    Ready,
+    Failed(String),
+    Stopped,
+}
+
+// ── AppData ───────────────────────────────────────────────────────────────────
+
+pub struct AppData {
+    pub registry_state: RegistryState,
+    pub output_state: OutputState,
+    pub seat_state: SeatState,
+    pub shm_state: Shm,
+    pub workspace_state: WorkspaceState,
+    pub toplevel_info_state: ToplevelInfoState,
+    pub toplevel_manager_state: Option<ToplevelManagerState>,
+    pub screencopy_state: ScreencopyState,
+
+    /// Set when running in subscribe/monitor mode via the CLI (prints to stdout).
+    pub monitor: Option<MonitorConfig>,
+    /// Set when running in subscribe/monitor mode via the library API (calls a handler).
+    pub event_handler: Option<Box<dyn FnMut(MonitorEvent) -> Result<(), crate::Error>>>,
+    /// Sticky error set by the event handler so the monitor loop can surface it.
+    pub handler_error: Option<crate::Error>,
+
+    pub workspaces_done: bool,
+    pub toplevels_done: bool,
+
+    // Screencopy signals
+    pub capture_result: Option<CaptureResult>,
+    pub capture_formats: Option<Formats>,
+}
+
+impl AppData {
+    pub fn new(
+        registry_state: RegistryState,
+        output_state: OutputState,
+        seat_state: SeatState,
+        shm_state: Shm,
+        workspace_state: WorkspaceState,
+        toplevel_info_state: ToplevelInfoState,
+        toplevel_manager_state: Option<ToplevelManagerState>,
+        screencopy_state: ScreencopyState,
+    ) -> Self {
+        Self {
+            registry_state,
+            output_state,
+            seat_state,
+            shm_state,
+            workspace_state,
+            toplevel_info_state,
+            toplevel_manager_state,
+            screencopy_state,
+            monitor: None,
+            event_handler: None,
+            handler_error: None,
+            workspaces_done: false,
+            toplevels_done: false,
+            capture_result: None,
+            capture_formats: None,
+        }
+    }
+}
+
+impl AppData {
+    /// Dispatch a monitor event to whichever sink is configured:
+    /// - CLI mode: print via `monitor::print_event`
+    /// - Library mode: call the user's `event_handler`
+    pub(crate) fn emit(&mut self, event: MonitorEvent) {
+        if let Some(fmt) = self.monitor.as_ref().map(|m| m.format) {
+            print_event(&event, fmt);
+        }
+        if let Some(handler) = self.event_handler.as_mut() {
+            if let Err(e) = handler(event) {
+                self.handler_error = Some(e);
+            }
+        }
+    }
+}
+
+// ── ProvidesRegistryState ─────────────────────────────────────────────────────
+
+impl ProvidesRegistryState for AppData {
+    fn registry(&mut self) -> &mut RegistryState {
+        &mut self.registry_state
+    }
+
+    smithay_client_toolkit::registry_handlers!(OutputState, SeatState);
+}
+
+// ── OutputHandler ─────────────────────────────────────────────────────────────
+
+impl OutputHandler for AppData {
+    fn output_state(&mut self) -> &mut OutputState {
+        &mut self.output_state
+    }
+
+    fn new_output(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_output::WlOutput) {}
+    fn update_output(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_output::WlOutput) {}
+    fn output_destroyed(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_output::WlOutput) {}
+}
+
+// ── SeatHandler ───────────────────────────────────────────────────────────────
+
+impl SeatHandler for AppData {
+    fn seat_state(&mut self) -> &mut SeatState {
+        &mut self.seat_state
+    }
+
+    fn new_seat(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {}
+
+    fn new_capability(
+        &mut self,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        _: wl_seat::WlSeat,
+        _: Capability,
+    ) {
+    }
+
+    fn remove_capability(
+        &mut self,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        _: wl_seat::WlSeat,
+        _: Capability,
+    ) {
+    }
+
+    fn remove_seat(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {}
+}
+
+// ── ShmHandler ────────────────────────────────────────────────────────────────
+
+impl ShmHandler for AppData {
+    fn shm_state(&mut self) -> &mut Shm {
+        &mut self.shm_state
+    }
+}
+
+// ── WorkspaceHandler ──────────────────────────────────────────────────────────
+
+impl WorkspaceHandler for AppData {
+    fn workspace_state(&mut self) -> &mut WorkspaceState {
+        &mut self.workspace_state
+    }
+
+    fn done(&mut self) {
+        self.workspaces_done = true;
+
+        if self.monitor.is_none() && self.event_handler.is_none() {
+            return;
+        }
+
+        let current: std::collections::HashSet<ext_workspace_handle_v1::ExtWorkspaceHandleV1> =
+            self.workspace_state
+                .workspaces()
+                .map(|w| w.handle.clone())
+                .collect();
+
+        let known: std::collections::HashSet<_> = self
+            .monitor
+            .as_ref()
+            .map(|m| m.known_workspaces.clone())
+            .unwrap_or_default();
+
+        let mut added: Vec<MonitorEvent> = Vec::new();
+        let mut updated: Vec<MonitorEvent> = Vec::new();
+        let mut removed: Vec<MonitorEvent> = Vec::new();
+
+        for ws in self.workspace_state.workspaces() {
+            let json = workspace_to_json(ws, self);
+            if known.contains(&ws.handle) {
+                updated.push(MonitorEvent::WorkspaceUpdated { workspace: json });
+            } else {
+                added.push(MonitorEvent::WorkspaceAdded { workspace: json });
+            }
+        }
+
+        let snapshots = self
+            .monitor
+            .as_ref()
+            .map(|m| m.workspace_snapshots.clone())
+            .unwrap_or_default();
+        for gone_handle in known.difference(&current) {
+            let (name, wid) = snapshots
+                .get(gone_handle)
+                .cloned()
+                .unwrap_or_else(|| ("<unknown>".to_string(), None));
+            removed.push(MonitorEvent::WorkspaceRemoved { name, id: wid });
+        }
+
+        let events: Vec<MonitorEvent> = added.into_iter().chain(updated).chain(removed).collect();
+        for ev in events {
+            self.emit(ev);
+        }
+
+        if let Some(mon) = self.monitor.as_mut() {
+            mon.known_workspaces = current;
+            mon.workspace_snapshots.clear();
+            for ws in self.workspace_state.workspaces() {
+                mon.workspace_snapshots
+                    .insert(ws.handle.clone(), (ws.name.clone(), ws.id.clone()));
+            }
+        }
+    }
+}
+
+// ── ToplevelInfoHandler ───────────────────────────────────────────────────────
+
+impl ToplevelInfoHandler for AppData {
+    fn toplevel_info_state(&mut self) -> &mut ToplevelInfoState {
+        &mut self.toplevel_info_state
+    }
+
+    fn new_toplevel(
+        &mut self,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        handle: &ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1,
+    ) {
+        if self.monitor.is_some() || self.event_handler.is_some() {
+            if let Some(info) = self.toplevel_info_state.info(handle) {
+                let json = toplevel_to_json(info, self);
+                self.emit(MonitorEvent::WindowOpened { window: json });
+            }
+        }
+    }
+
+    fn update_toplevel(
+        &mut self,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        handle: &ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1,
+    ) {
+        if self.monitor.is_some() || self.event_handler.is_some() {
+            if let Some(info) = self.toplevel_info_state.info(handle) {
+                let json = toplevel_to_json(info, self);
+                self.emit(MonitorEvent::WindowUpdated { window: json });
+            }
+        }
+    }
+
+    fn toplevel_closed(
+        &mut self,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        handle: &ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1,
+    ) {
+        if self.monitor.is_some() || self.event_handler.is_some() {
+            if let Some(info) = self.toplevel_info_state.info(handle) {
+                let ev = MonitorEvent::WindowClosed {
+                    title: info.title.clone(),
+                    app_id: info.app_id.clone(),
+                    identifier: info.identifier.clone(),
+                };
+                self.emit(ev);
+            }
+        }
+    }
+
+    fn info_done(&mut self, _: &Connection, _: &QueueHandle<Self>) {
+        self.toplevels_done = true;
+    }
+}
+
+// ── ToplevelManagerHandler ────────────────────────────────────────────────────
+
+impl cosmic_client_toolkit::toplevel_management::ToplevelManagerHandler for AppData {
+    fn toplevel_manager_state(
+        &mut self,
+    ) -> &mut cosmic_client_toolkit::toplevel_management::ToplevelManagerState {
+        self.toplevel_manager_state.as_mut().unwrap()
+    }
+
+    fn capabilities(
+        &mut self,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        _: Vec<WEnum<zcosmic_toplevel_manager_v1::ZcosmicToplelevelManagementCapabilitiesV1>>,
+    ) {
+    }
+}
+
+// ── ScreencopyHandler ─────────────────────────────────────────────────────────
+
+impl ScreencopyHandler for AppData {
+    fn screencopy_state(&mut self) -> &mut ScreencopyState {
+        &mut self.screencopy_state
+    }
+
+    fn init_done(
+        &mut self,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        _session: &CaptureSession,
+        formats: &Formats,
+    ) {
+        self.capture_formats = Some(formats.clone());
+    }
+
+    fn stopped(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &CaptureSession) {
+        self.capture_result = Some(CaptureResult::Stopped);
+    }
+
+    fn ready(
+        &mut self,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        _frame: &CaptureFrame,
+        _meta: Frame,
+    ) {
+        self.capture_result = Some(CaptureResult::Ready);
+    }
+
+    fn failed(
+        &mut self,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        _frame: &CaptureFrame,
+        reason: WEnum<FailureReason>,
+    ) {
+        let msg = match reason {
+            WEnum::Value(FailureReason::BufferConstraints) => "buffer constraints mismatch",
+            WEnum::Value(FailureReason::Stopped) => "session stopped",
+            _ => "unknown failure",
+        };
+        self.capture_result = Some(CaptureResult::Failed(msg.to_string()));
+    }
+}
+
+// ── Delegate macros ───────────────────────────────────────────────────────────
+
+smithay_client_toolkit::delegate_output!(AppData);
+smithay_client_toolkit::delegate_registry!(AppData);
+smithay_client_toolkit::delegate_seat!(AppData);
+smithay_client_toolkit::delegate_shm!(AppData);
+
+cosmic_client_toolkit::delegate_workspace!(AppData);
+cosmic_client_toolkit::delegate_toplevel_info!(AppData);
+cosmic_client_toolkit::delegate_toplevel_manager!(AppData);
+cosmic_client_toolkit::delegate_screencopy!(AppData);
+--- /home/jirkadolezal/.cargo/git/checkouts/cosmicmsg-afdd0e089929c82f/881d2ca/src/main.rs ---
+mod capture;
+mod connection;
+mod monitor;
+mod output;
+mod state;
+mod toplevels;
+mod workspaces;
+
+// Re-use types defined in the lib crate.
+use cosmicmsg::{Error, OutputFormat};
+
+use clap::{Parser, Subcommand};
+use std::io::{self, BufWriter};
+
+#[derive(Parser, Debug)]
+#[command(
+    name = "cosmicmsg",
+    version,
+    about = "Query and control the COSMIC desktop compositor",
+    long_about = "cosmicmsg communicates with the COSMIC compositor (cosmic-comp) via Wayland \
+                  protocols to query and control workspaces, windows, and outputs."
+)]
+pub struct Cli {
+    /// Output raw JSON (machine-readable, compact)
+    #[arg(short, long, conflicts_with = "pretty")]
+    pub json: bool,
+
+    /// Output pretty-printed JSON
+    #[arg(short, long, conflicts_with = "json")]
+    pub pretty: bool,
+
+    #[command(subcommand)]
+    pub command: Command,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum Command {
+    /// List all connected outputs
+    GetOutputs,
+
+    /// List all workspaces with their state
+    GetWorkspaces,
+
+    /// List all open windows (toplevels) with their state
+    GetToplevels,
+
+    /// Show a tree of outputs → workspaces → windows
+    GetTree,
+
+    /// Subscribe to compositor events and print them as they arrive.
+    ///
+    /// Prints one JSON object per line (ndjson). Runs until interrupted (Ctrl-C).
+    /// Event types: workspace-added, workspace-updated, workspace-removed,
+    ///              window-opened, window-updated, window-closed
+    Subscribe,
+
+    /// Screen/window/workspace capture
+    #[command(subcommand)]
+    Capture(CaptureCommand),
+
+    /// Workspace management commands
+    #[command(subcommand)]
+    Workspace(WorkspaceCommand),
+
+    /// Window management commands
+    #[command(subcommand)]
+    Window(WindowCommand),
+}
+
+#[derive(Subcommand, Debug)]
+pub enum CaptureCommand {
+    /// Capture an output (monitor) to a PNG file or stdout
+    Output {
+        /// Output name (e.g. DP-1). Defaults to the first output.
+        #[arg(short, long)]
+        output: Option<String>,
+        /// Write PNG to this file path instead of stdout
+        #[arg(short = 'f', long)]
+        file: Option<String>,
+        /// Paint the cursor onto the captured image
+        #[arg(long)]
+        cursor: bool,
+        /// Scale factor: 0.0–1.0 or percentage (e.g. 0.5 or 50%)
+        #[arg(short, long)]
+        scale: Option<String>,
+    },
+    /// Capture a window to a PNG file or stdout
+    Window {
+        /// Window title, app-id, or identifier (substring match)
+        selector: String,
+        /// Write PNG to this file path instead of stdout
+        #[arg(short = 'f', long)]
+        file: Option<String>,
+        /// Paint the cursor onto the captured image
+        #[arg(long)]
+        cursor: bool,
+        /// Scale factor: 0.0–1.0 or percentage (e.g. 0.5 or 50%)
+        #[arg(short, long)]
+        scale: Option<String>,
+    },
+    /// Capture a workspace to a PNG file or stdout
+    Workspace {
+        /// Workspace name or id
+        workspace: String,
+        /// Write PNG to this file path instead of stdout
+        #[arg(short = 'f', long)]
+        file: Option<String>,
+        /// Paint the cursor onto the captured image
+        #[arg(long)]
+        cursor: bool,
+        /// Scale factor: 0.0–1.0 or percentage (e.g. 0.5 or 50%)
+        #[arg(short, long)]
+        scale: Option<String>,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum WorkspaceCommand {
+    /// Switch to a workspace (by name or id)
+    Activate { workspace: String },
+    /// Rename a workspace
+    Rename { workspace: String, new_name: String },
+    /// Get the tiling state of a workspace (or the active workspace if omitted)
+    GetTiling {
+        /// Workspace name or id. Defaults to the currently active workspace.
+        workspace: Option<String>,
+    },
+    /// Enable or disable tiling on a specific workspace
+    SetTiling {
+        /// Workspace name or id, or "active" to target the currently active workspace
+        workspace: String,
+        /// enabled or disabled
+        state: workspaces::TilingArg,
+    },
+    /// Set the tiling default for all workspaces that have never had any windows.
+    /// Mirrors the "new workspace" behavior toggle in the tiling applet.
+    SetTilingDefault {
+        /// enabled or disabled
+        state: workspaces::TilingArg,
+    },
+    /// Pin a workspace (make it persistent across outputs)
+    Pin { workspace: String },
+    /// Unpin a workspace
+    Unpin { workspace: String },
+    /// Move a workspace to be before another workspace
+    MoveBefore { workspace: String, before: String },
+    /// Move a workspace to be after another workspace
+    MoveAfter { workspace: String, after: String },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum WindowCommand {
+    /// Activate (focus) a window
+    Activate { selector: String },
+    /// Close a window
+    Close { selector: String },
+    /// Maximize a window
+    Maximize { selector: String },
+    /// Unmaximize a window
+    Unmaximize { selector: String },
+    /// Minimize a window
+    Minimize { selector: String },
+    /// Unminimize a window
+    Unminimize { selector: String },
+    /// Fullscreen a window
+    Fullscreen { selector: String },
+    /// Exit fullscreen on a window
+    Unfullscreen { selector: String },
+    /// Make a window sticky (visible on all workspaces)
+    SetSticky { selector: String },
+    /// Remove sticky from a window
+    UnsetSticky { selector: String },
+    /// Move a window to a workspace
+    MoveToWorkspace { selector: String, workspace: String },
+}
+
+fn main() {
+    let cli = Cli::parse();
+
+    let format = if cli.json {
+        OutputFormat::Json
+    } else if cli.pretty {
+        OutputFormat::PrettyJson
+    } else {
+        OutputFormat::Human
+    };
+
+    if let Err(e) = run(cli.command, format) {
+        eprintln!("error: {e}");
+        std::process::exit(match e {
+            Error::Connect(_) => 1,
+            Error::ProtocolNotAvailable(_) => 2,
+            Error::NotFound(_) => 3,
+            Error::AmbiguousMatch(_) => 4,
+            Error::Other(_) => 5,
+        });
+    }
+}
+
+fn run(command: Command, format: OutputFormat) -> Result<(), Error> {
+    match command {
+        Command::GetOutputs => {
+            let (state, _eq) = connection::collect_state()?;
+            output::cmd_get_outputs(&state, format);
+        }
+        Command::GetWorkspaces => {
+            let (state, _eq) = connection::collect_state()?;
+            workspaces::cmd_get_workspaces(&state, format);
+        }
+        Command::GetToplevels => {
+            let (state, _eq) = connection::collect_state()?;
+            toplevels::cmd_get_toplevels(&state, format);
+        }
+        Command::GetTree => {
+            let (state, _eq) = connection::collect_state()?;
+            output::cmd_get_tree(&state, format);
+        }
+        Command::Subscribe => {
+            connection::run_monitor(format)?;
+        }
+        Command::Capture(cap_cmd) => {
+            run_capture(cap_cmd)?;
+        }
+        Command::Workspace(ws_cmd) => {
+            let (state, eq) = connection::collect_state()?;
+            cmd_workspace(&state, ws_cmd)?;
+            eq.flush().map_err(|e| Error::Other(e.to_string()))?;
+        }
+        Command::Window(win_cmd) => {
+            let (mut state, eq) = connection::collect_state()?;
+            cmd_window(&mut state, win_cmd)?;
+            eq.flush().map_err(|e| Error::Other(e.to_string()))?;
+        }
+    }
+    Ok(())
+}
+
+fn run_capture(cmd: CaptureCommand) -> Result<(), Error> {
+    use cosmic_client_toolkit::screencopy::CaptureSource;
+
+    let (mut state, mut eq) = connection::collect_state()?;
+
+    let (source, file, with_cursor, scale_str) = match cmd {
+        CaptureCommand::Output {
+            output,
+            file,
+            cursor,
+            scale,
+        } => {
+            let wl_output = match &output {
+                Some(name) => state
+                    .output_state
+                    .outputs()
+                    .find(|o| {
+                        state
+                            .output_state
+                            .info(o)
+                            .and_then(|i| i.name.clone())
+                            .as_deref()
+                            == Some(name.as_str())
+                    })
+                    .ok_or_else(|| Error::NotFound(format!("output '{}'", name.as_str())))?,
+                None => state
+                    .output_state
+                    .outputs()
+                    .next()
+                    .ok_or_else(|| Error::NotFound("no outputs available".into()))?,
+            };
+            (CaptureSource::Output(wl_output), file, cursor, scale)
+        }
+        CaptureCommand::Window {
+            selector,
+            file,
+            cursor,
+            scale,
+        } => {
+            let info = toplevels::resolve_toplevel_pub(&state, &selector)?;
+            let handle = info.foreign_toplevel.clone();
+            (CaptureSource::Toplevel(handle), file, cursor, scale)
+        }
+        CaptureCommand::Workspace {
+            workspace,
+            file,
+            cursor,
+            scale,
+        } => {
+            let ws = workspaces::resolve_workspace_pub(&state, &workspace)?;
+            let handle = ws.handle.clone();
+            (CaptureSource::Workspace(handle), file, cursor, scale)
+        }
+    };
+
+    // Parse scale factor: accepts "0.5", "50%", "2x", etc.
+    let scale = scale_str.as_deref().map(parse_scale).transpose()?;
+
+    let mut out: Box<dyn std::io::Write> = match &file {
+        Some(path) => Box::new(BufWriter::new(
+            std::fs::File::create(path)
+                .map_err(|e| Error::Other(format!("cannot create file '{path}': {e}")))?,
+        )),
+        None => Box::new(BufWriter::new(io::stdout())),
+    };
+
+    capture::capture_to_png(&mut state, &mut eq, source, &mut *out, with_cursor, scale)?;
+
+    if let Some(path) = &file {
+        eprintln!("saved to {path}");
+    }
+
+    Ok(())
+}
+
+/// Parse a scale string into a positive float.
+/// Accepts: "0.5", "50%", "2x", "2X", "200%"
+fn parse_scale(s: &str) -> Result<f64, Error> {
+    let s = s.trim();
+    let v: f64 = if let Some(pct) = s.strip_suffix('%') {
+        pct.trim()
+            .parse::<f64>()
+            .map_err(|_| Error::Other(format!("invalid scale '{s}'")))?
+            / 100.0
+    } else if let Some(mult) = s.strip_suffix('x').or_else(|| s.strip_suffix('X')) {
+        mult.trim()
+            .parse::<f64>()
+            .map_err(|_| Error::Other(format!("invalid scale '{s}'")))?
+    } else {
+        s.parse::<f64>()
+            .map_err(|_| Error::Other(format!("invalid scale '{s}'")))?
+    };
+    if v <= 0.0 {
+        return Err(Error::Other(format!("scale must be positive, got {s}")));
+    }
+    Ok(v)
+}
+
+// ── CLI command dispatchers (use WorkspaceCommand / WindowCommand enums) ───────
+
+fn cmd_workspace(state: &state::AppData, cmd: WorkspaceCommand) -> Result<(), Error> {
+    use cosmic_protocols::workspace::v2::client::zcosmic_workspace_handle_v2;
+    use wayland_client::WEnum;
+    use workspaces::{resolve_active_workspace, resolve_workspace_pub};
+
+    match cmd {
+        WorkspaceCommand::Activate { workspace } => {
+            let ws = resolve_workspace_pub(state, &workspace)?;
+            ws.handle.activate();
+            if let Ok(mgr) = state.workspace_state.workspace_manager().get() {
+                mgr.commit();
+            }
+        }
+        WorkspaceCommand::Rename {
+            workspace,
+            new_name,
+        } => {
+            let ws = resolve_workspace_pub(state, &workspace)?;
+            ws.cosmic_handle
+                .as_ref()
+                .ok_or_else(|| {
+                    Error::ProtocolNotAvailable("zcosmic-workspace-v2 not available".into())
+                })?
+                .rename(new_name);
+            if let Ok(mgr) = state.workspace_state.workspace_manager().get() {
+                mgr.commit();
+            }
+        }
+        WorkspaceCommand::GetTiling { workspace } => {
+            let ws = match workspace {
+                Some(sel) => resolve_workspace_pub(state, &sel)?,
+                None => resolve_active_workspace(state)?,
+            };
+            let tiling = ws
+                .tiling
+                .as_ref()
+                .map(|t| match t {
+                    WEnum::Value(zcosmic_workspace_handle_v2::TilingState::TilingEnabled) => {
+                        "enabled"
+                    }
+                    WEnum::Value(zcosmic_workspace_handle_v2::TilingState::FloatingOnly) => {
+                        "disabled"
+                    }
+                    _ => "unknown",
+                })
+                .unwrap_or("unknown");
+            println!("{}: tiling={}", ws.name, tiling);
+        }
+        WorkspaceCommand::SetTiling {
+            workspace,
+            state: tiling_arg,
+        } => {
+            let ws = if workspace.eq_ignore_ascii_case("active") {
+                resolve_active_workspace(state)?
+            } else {
+                resolve_workspace_pub(state, &workspace)?
+            };
+            let cosmic = ws.cosmic_handle.as_ref().ok_or_else(|| {
+                Error::ProtocolNotAvailable("zcosmic-workspace-v2 not available".into())
+            })?;
+            cosmic.set_tiling_state(workspaces::tiling_arg_to_protocol(&tiling_arg));
+            if let Ok(mgr) = state.workspace_state.workspace_manager().get() {
+                mgr.commit();
+            }
+        }
+        WorkspaceCommand::SetTilingDefault { state: tiling_arg } => {
+            let occupied: std::collections::HashSet<_> = state
+                .toplevel_info_state
+                .toplevels()
+                .flat_map(|t| t.workspace.iter().cloned())
+                .collect();
+            let tiling_state = workspaces::tiling_arg_to_protocol(&tiling_arg);
+            let mut changed = 0;
+            for ws in state.workspace_state.workspaces() {
+                if !occupied.contains(&ws.handle) {
+                    if let Some(cosmic) = &ws.cosmic_handle {
+                        cosmic.set_tiling_state(tiling_state);
+                        changed += 1;
+                    }
+                }
+            }
+            if changed > 0 {
+                if let Ok(mgr) = state.workspace_state.workspace_manager().get() {
+                    mgr.commit();
+                }
+            }
+            eprintln!("set tiling default on {changed} empty workspace(s)");
+        }
+        WorkspaceCommand::Pin { workspace } => {
+            let ws = resolve_workspace_pub(state, &workspace)?;
+            ws.cosmic_handle
+                .as_ref()
+                .ok_or_else(|| {
+                    Error::ProtocolNotAvailable("zcosmic-workspace-v2 not available".into())
+                })?
+                .pin();
+            if let Ok(mgr) = state.workspace_state.workspace_manager().get() {
+                mgr.commit();
+            }
+        }
+        WorkspaceCommand::Unpin { workspace } => {
+            let ws = resolve_workspace_pub(state, &workspace)?;
+            ws.cosmic_handle
+                .as_ref()
+                .ok_or_else(|| {
+                    Error::ProtocolNotAvailable("zcosmic-workspace-v2 not available".into())
+                })?
+                .unpin();
+            if let Ok(mgr) = state.workspace_state.workspace_manager().get() {
+                mgr.commit();
+            }
+        }
+        WorkspaceCommand::MoveBefore { workspace, before } => {
+            let ws = resolve_workspace_pub(state, &workspace)?;
+            let other = resolve_workspace_pub(state, &before)?;
+            let cosmic = ws.cosmic_handle.as_ref().ok_or_else(|| {
+                Error::ProtocolNotAvailable("zcosmic-workspace-v2 not available".into())
+            })?;
+            cosmic.move_before(&other.handle, 0);
+            if let Ok(mgr) = state.workspace_state.workspace_manager().get() {
+                mgr.commit();
+            }
+        }
+        WorkspaceCommand::MoveAfter { workspace, after } => {
+            let ws = resolve_workspace_pub(state, &workspace)?;
+            let other = resolve_workspace_pub(state, &after)?;
+            let cosmic = ws.cosmic_handle.as_ref().ok_or_else(|| {
+                Error::ProtocolNotAvailable("zcosmic-workspace-v2 not available".into())
+            })?;
+            cosmic.move_after(&other.handle, 0);
+            if let Ok(mgr) = state.workspace_state.workspace_manager().get() {
+                mgr.commit();
+            }
+        }
+    }
+    Ok(())
+}
+
+fn cmd_window(state: &mut state::AppData, cmd: WindowCommand) -> Result<(), Error> {
+    use toplevels::resolve_toplevel_pub;
+
+    let manager = state
+        .toplevel_manager_state
+        .as_ref()
+        .ok_or_else(|| {
+            Error::ProtocolNotAvailable("zcosmic-toplevel-management-v1 not available".into())
+        })?
+        .manager
+        .clone();
+
+    macro_rules! cosmic {
+        ($t:expr) => {
+            $t.cosmic_toplevel.as_ref().ok_or_else(|| {
+                Error::ProtocolNotAvailable("zcosmic-toplevel-info-v1 not available".into())
+            })?
+        };
+    }
+
+    match cmd {
+        WindowCommand::Activate { selector } => {
+            let t = resolve_toplevel_pub(state, &selector)?;
+            let seat = state
+                .seat_state
+                .seats()
+                .next()
+                .ok_or_else(|| Error::Other("no seat available".into()))?;
+            manager.activate(cosmic!(t), &seat);
+        }
+        WindowCommand::Close { selector } => {
+            manager.close(cosmic!(resolve_toplevel_pub(state, &selector)?));
+        }
+        WindowCommand::Maximize { selector } => {
+            manager.set_maximized(cosmic!(resolve_toplevel_pub(state, &selector)?));
+        }
+        WindowCommand::Unmaximize { selector } => {
+            manager.unset_maximized(cosmic!(resolve_toplevel_pub(state, &selector)?));
+        }
+        WindowCommand::Minimize { selector } => {
+            manager.set_minimized(cosmic!(resolve_toplevel_pub(state, &selector)?));
+        }
+        WindowCommand::Unminimize { selector } => {
+            manager.unset_minimized(cosmic!(resolve_toplevel_pub(state, &selector)?));
+        }
+        WindowCommand::Fullscreen { selector } => {
+            manager.set_fullscreen(cosmic!(resolve_toplevel_pub(state, &selector)?), None);
+        }
+        WindowCommand::Unfullscreen { selector } => {
+            manager.unset_fullscreen(cosmic!(resolve_toplevel_pub(state, &selector)?));
+        }
+        WindowCommand::SetSticky { selector } => {
+            manager.set_sticky(cosmic!(resolve_toplevel_pub(state, &selector)?));
+        }
+        WindowCommand::UnsetSticky { selector } => {
+            manager.unset_sticky(cosmic!(resolve_toplevel_pub(state, &selector)?));
+        }
+        WindowCommand::MoveToWorkspace {
+            selector,
+            workspace,
+        } => {
+            let t = resolve_toplevel_pub(state, &selector)?;
+            let cosmic = cosmic!(t);
+            let ws = workspaces::resolve_workspace_pub(state, &workspace)?;
+            let ws_handle = ws.handle.clone();
+            let output = state
+                .workspace_state
+                .workspace_groups()
+                .find(|g| g.workspaces.contains(&ws_handle))
+                .and_then(|g| g.outputs.first().cloned())
+                .ok_or_else(|| Error::Other("target workspace has no associated output".into()))?;
+            manager.move_to_ext_workspace(cosmic, &ws_handle, &output);
+        }
+    }
+    Ok(())
+}
+--- /home/jirkadolezal/.cargo/git/checkouts/cosmicmsg-afdd0e089929c82f/881d2ca/src/workspaces/mod.rs ---
+use crate::{Error, OutputFormat, state::AppData};
+use clap::ValueEnum;
+use cosmic_client_toolkit::workspace::Workspace;
+use cosmic_protocols::workspace::v2::client::zcosmic_workspace_handle_v2;
+use serde::Serialize;
+use wayland_client::{Proxy, WEnum};
+use wayland_protocols::ext::workspace::v1::client::ext_workspace_handle_v1;
+#[derive(Debug, Clone, ValueEnum)]
+pub enum TilingArg {
+    Enabled,
+    Disabled,
+}
+
+#[derive(Serialize)]
+pub struct WorkspaceJson {
+    pub name: String,
+    pub id: Option<String>,
+    pub coordinates: Vec<u32>,
+    pub active: bool,
+    pub urgent: bool,
+    pub hidden: bool,
+    pub pinned: bool,
+    pub tiling: Option<String>,
+    pub output: Option<String>,
+    pub group_id: String,
+}
+
+pub fn workspace_to_json(ws: &Workspace, state: &AppData) -> WorkspaceJson {
+    let active = ws.state.contains(ext_workspace_handle_v1::State::Active);
+    let urgent = ws.state.contains(ext_workspace_handle_v1::State::Urgent);
+    let hidden = ws.state.contains(ext_workspace_handle_v1::State::Hidden);
+    let pinned = ws
+        .cosmic_state
+        .contains(zcosmic_workspace_handle_v2::State::Pinned);
+
+    let tiling = ws.tiling.as_ref().map(|t| match t {
+        WEnum::Value(zcosmic_workspace_handle_v2::TilingState::TilingEnabled) => {
+            "enabled".to_string()
+        }
+        WEnum::Value(zcosmic_workspace_handle_v2::TilingState::FloatingOnly) => {
+            "disabled".to_string()
+        }
+        _ => "unknown".to_string(),
+    });
+
+    // Find the output this workspace is on via its workspace group
+    let output = state
+        .workspace_state
+        .workspace_groups()
+        .find(|g| g.workspaces.contains(&ws.handle))
+        .and_then(|g| {
+            g.outputs.first().and_then(|o| {
+                state
+                    .output_state
+                    .info(o)
+                    .and_then(|info| info.name.clone())
+            })
+        });
+
+    let group_id = state
+        .workspace_state
+        .workspace_groups()
+        .find(|g| g.workspaces.contains(&ws.handle))
+        .map(|g| g.handle.id().to_string())
+        .unwrap_or_default();
+
+    WorkspaceJson {
+        name: ws.name.clone(),
+        id: ws.id.clone(),
+        coordinates: ws.coordinates.clone(),
+        active,
+        urgent,
+        hidden,
+        pinned,
+        tiling,
+        output,
+        group_id,
+    }
+}
+
+pub fn cmd_get_workspaces(state: &AppData, format: OutputFormat) {
+    let mut workspaces: Vec<WorkspaceJson> = state
+        .workspace_state
+        .workspaces()
+        .map(|ws| workspace_to_json(ws, state))
+        .collect();
+
+    // Sort by group then coordinates
+    workspaces.sort_by(|a, b| {
+        a.group_id
+            .cmp(&b.group_id)
+            .then(a.coordinates.cmp(&b.coordinates))
+    });
+
+    match format {
+        OutputFormat::Json => {
+            println!("{}", serde_json::to_string(&workspaces).unwrap());
+        }
+        OutputFormat::PrettyJson => {
+            println!("{}", serde_json::to_string_pretty(&workspaces).unwrap());
+        }
+        OutputFormat::Human => {
+            for ws in &workspaces {
+                let active = if ws.active { " *" } else { "" };
+                let pinned = if ws.pinned { " [pinned]" } else { "" };
+                let tiling = ws
+                    .tiling
+                    .as_deref()
+                    .map(|t| format!(" [tiling: {t}]"))
+                    .unwrap_or_default();
+                let output = ws
+                    .output
+                    .as_deref()
+                    .map(|o| format!(" on {o}"))
+                    .unwrap_or_default();
+                println!("{}{}{}{}{}", ws.name, active, pinned, tiling, output);
+            }
+        }
+    }
+}
+
+// ── Workspace resolution ──────────────────────────────────────────────────────
+
+/// Find a workspace by name or id. Public wrapper used by the toplevels module.
+pub fn resolve_workspace_pub<'a>(
+    state: &'a AppData,
+    selector: &str,
+) -> Result<&'a Workspace, Error> {
+    resolve_workspace(state, selector)
+}
+
+fn resolve_workspace<'a>(state: &'a AppData, selector: &str) -> Result<&'a Workspace, Error> {
+    let workspaces: Vec<_> = state.workspace_state.workspaces().collect();
+
+    // 1. Exact match on name
+    let exact: Vec<_> = workspaces.iter().filter(|ws| ws.name == selector).collect();
+    if exact.len() == 1 {
+        return Ok(exact[0]);
+    }
+    if exact.len() > 1 {
+        return Err(Error::AmbiguousMatch(format!(
+            "multiple workspaces named '{selector}'"
+        )));
+    }
+
+    // 2. Exact match on id
+    let by_id: Vec<_> = workspaces
+        .iter()
+        .filter(|ws| ws.id.as_deref() == Some(selector))
+        .collect();
+    if by_id.len() == 1 {
+        return Ok(by_id[0]);
+    }
+
+    // 3. Case-insensitive substring match on name
+    let lower = selector.to_lowercase();
+    let partial: Vec<_> = workspaces
+        .iter()
+        .filter(|ws| ws.name.to_lowercase().contains(&lower))
+        .collect();
+    if partial.len() == 1 {
+        return Ok(partial[0]);
+    }
+    if partial.len() > 1 {
+        return Err(Error::AmbiguousMatch(format!(
+            "selector '{selector}' matches multiple workspaces: {}",
+            partial
+                .iter()
+                .map(|ws| ws.name.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        )));
+    }
+
+    Err(Error::NotFound(format!(
+        "no workspace matching '{selector}'"
+    )))
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+pub fn tiling_arg_to_protocol(arg: &TilingArg) -> zcosmic_workspace_handle_v2::TilingState {
+    match arg {
+        TilingArg::Enabled => zcosmic_workspace_handle_v2::TilingState::TilingEnabled,
+        TilingArg::Disabled => zcosmic_workspace_handle_v2::TilingState::FloatingOnly,
+    }
+}
+
+/// Find the currently active workspace.
+pub fn resolve_active_workspace(state: &AppData) -> Result<&Workspace, Error> {
+    state
+        .workspace_state
+        .workspaces()
+        .find(|ws| ws.state.contains(ext_workspace_handle_v1::State::Active))
+        .ok_or_else(|| Error::NotFound("no active workspace found".to_string()))
+}
+--- /home/jirkadolezal/.cargo/git/checkouts/cosmicmsg-afdd0e089929c82f/881d2ca/src/toplevels/mod.rs ---
+use crate::{Error, OutputFormat, state::AppData};
+use cosmic_client_toolkit::toplevel_info::ToplevelInfo;
+use cosmic_protocols::toplevel_info::v1::client::zcosmic_toplevel_handle_v1;
+use serde::Serialize;
+
+#[derive(Serialize)]
+pub struct ToplevelJson {
+    pub title: String,
+    pub app_id: String,
+    pub identifier: String,
+    pub state: Vec<String>,
+    pub outputs: Vec<String>,
+    pub workspaces: Vec<String>,
+}
+
+pub fn toplevel_to_json(t: &ToplevelInfo, state: &AppData) -> ToplevelJson {
+    let tl_states: Vec<String> = t
+        .state
+        .iter()
+        .map(|s| match s {
+            zcosmic_toplevel_handle_v1::State::Maximized => "maximized",
+            zcosmic_toplevel_handle_v1::State::Minimized => "minimized",
+            zcosmic_toplevel_handle_v1::State::Activated => "activated",
+            zcosmic_toplevel_handle_v1::State::Fullscreen => "fullscreen",
+            zcosmic_toplevel_handle_v1::State::Sticky => "sticky",
+            _ => "unknown",
+        })
+        .map(str::to_string)
+        .collect();
+
+    let outputs: Vec<String> = t
+        .output
+        .iter()
+        .filter_map(|o| {
+            state
+                .output_state
+                .info(o)
+                .and_then(|info| info.name.clone())
+        })
+        .collect();
+
+    let workspaces: Vec<String> = t
+        .workspace
+        .iter()
+        .filter_map(|ws_handle| {
+            state
+                .workspace_state
+                .workspace_info(ws_handle)
+                .map(|ws| ws.name.clone())
+        })
+        .collect();
+
+    ToplevelJson {
+        title: t.title.clone(),
+        app_id: t.app_id.clone(),
+        identifier: t.identifier.clone(),
+        state: tl_states,
+        outputs,
+        workspaces,
+    }
+}
+
+pub fn cmd_get_toplevels(state: &AppData, format: OutputFormat) {
+    let toplevels: Vec<ToplevelJson> = state
+        .toplevel_info_state
+        .toplevels()
+        .map(|t| toplevel_to_json(t, state))
+        .collect();
+
+    match format {
+        OutputFormat::Json => {
+            println!("{}", serde_json::to_string(&toplevels).unwrap());
+        }
+        OutputFormat::PrettyJson => {
+            println!("{}", serde_json::to_string_pretty(&toplevels).unwrap());
+        }
+        OutputFormat::Human => {
+            for t in &toplevels {
+                let state_str = if t.state.is_empty() {
+                    String::new()
+                } else {
+                    format!(" [{}]", t.state.join(", "))
+                };
+                let ws_str = if t.workspaces.is_empty() {
+                    String::new()
+                } else {
+                    format!(" on {}", t.workspaces.join(", "))
+                };
+                println!("\"{}\" ({}){}{}", t.title, t.app_id, state_str, ws_str);
+            }
+        }
+    }
+}
+
+// ── Window resolution ────────────────────────────────────────────────────────
+
+/// Resolve a window selector to a ToplevelInfo.
+/// Public re-export for use by capture module.
+pub fn resolve_toplevel_pub<'a>(
+    state: &'a AppData,
+    selector: &str,
+) -> Result<&'a ToplevelInfo, Error> {
+    resolve_toplevel(state, selector)
+}
+
+/// Matching priority:
+///   1. Exact identifier match
+///   2. Exact title match
+///   3. Exact app_id match
+///   4. Case-insensitive substring match on title
+///   5. Case-insensitive substring match on app_id
+fn resolve_toplevel<'a>(state: &'a AppData, selector: &str) -> Result<&'a ToplevelInfo, Error> {
+    let toplevels: Vec<&ToplevelInfo> = state.toplevel_info_state.toplevels().collect();
+
+    macro_rules! match_unique {
+        ($filter:expr, $label:expr) => {{
+            let matched: Vec<_> = toplevels.iter().filter(|t| $filter(t)).collect();
+            match matched.len() {
+                1 => return Ok(matched[0]),
+                n if n > 1 => {
+                    return Err(Error::AmbiguousMatch(format!(
+                        "selector '{}' matches {} windows by {} (titles: {})",
+                        selector,
+                        n,
+                        $label,
+                        matched
+                            .iter()
+                            .map(|t| t.title.as_str())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )));
+                }
+                _ => {}
+            }
+        }};
+    }
+
+    match_unique!(|t: &&ToplevelInfo| t.identifier == selector, "identifier");
+    match_unique!(|t: &&ToplevelInfo| t.title == selector, "title");
+    match_unique!(|t: &&ToplevelInfo| t.app_id == selector, "app_id");
+
+    let lower = selector.to_lowercase();
+    match_unique!(
+        |t: &&ToplevelInfo| t.title.to_lowercase().contains(&lower),
+        "title substring"
+    );
+    match_unique!(
+        |t: &&ToplevelInfo| t.app_id.to_lowercase().contains(&lower),
+        "app_id substring"
+    );
+
+    Err(Error::NotFound(format!("no window matching '{selector}'")))
+}
+
+// (cmd_window is defined in main.rs — it's CLI-only and references WindowCommand)
+--- /home/jirkadolezal/.cargo/git/checkouts/cosmicmsg-afdd0e089929c82f/881d2ca/src/connection.rs ---
+use crate::{
+    Error, OutputFormat,
+    monitor::MonitorEvent,
+    state::{AppData, MonitorConfig},
+};
+use cosmic_client_toolkit::{
+    screencopy::ScreencopyState, toplevel_management::ToplevelManagerState,
+    workspace::WorkspaceState,
+};
+use smithay_client_toolkit::{
+    output::OutputState, registry::RegistryState, seat::SeatState, shm::Shm,
+};
+use wayland_client::{Connection, EventQueue, globals::registry_queue_init};
+
+fn make_app_data(
+    globals: &wayland_client::globals::GlobalList,
+    qh: &wayland_client::QueueHandle<AppData>,
+) -> Result<AppData, Error> {
+    let registry_state = RegistryState::new(globals);
+    let output_state = OutputState::new(globals, qh);
+    let seat_state = SeatState::new(globals, qh);
+    let shm_state =
+        Shm::bind(globals, qh).map_err(|e| Error::ProtocolNotAvailable(format!("wl_shm: {e}")))?;
+    let workspace_state = WorkspaceState::new(&registry_state, qh);
+    let screencopy_state = ScreencopyState::new(globals, qh);
+
+    let toplevel_info_state =
+        cosmic_client_toolkit::toplevel_info::ToplevelInfoState::try_new(&registry_state, qh)
+            .ok_or_else(|| {
+                Error::ProtocolNotAvailable(
+                    "ext-foreign-toplevel-list-v1 not available — is cosmic-comp running?"
+                        .to_string(),
+                )
+            })?;
+
+    let toplevel_manager_state = ToplevelManagerState::try_new(&registry_state, qh);
+
+    Ok(AppData::new(
+        registry_state,
+        output_state,
+        seat_state,
+        shm_state,
+        workspace_state,
+        toplevel_info_state,
+        toplevel_manager_state,
+        screencopy_state,
+    ))
+}
+
+/// Connect to the Wayland compositor, pump the event loop until the initial
+/// workspace and toplevel snapshots have been received, and return both the
+/// populated AppData and the EventQueue (so callers can flush after mutations).
+pub fn collect_state() -> Result<(AppData, EventQueue<AppData>), Error> {
+    let conn = Connection::connect_to_env().map_err(|e| Error::Connect(e.to_string()))?;
+    let (globals, mut event_queue) =
+        registry_queue_init(&conn).map_err(|e| Error::Connect(e.to_string()))?;
+    let qh = event_queue.handle();
+
+    let mut app_data = make_app_data(&globals, &qh)?;
+
+    let max_rounds = 100;
+    for _ in 0..max_rounds {
+        event_queue
+            .blocking_dispatch(&mut app_data)
+            .map_err(|e| Error::Other(e.to_string()))?;
+        if app_data.workspaces_done && app_data.toplevels_done {
+            break;
+        }
+    }
+
+    Ok((app_data, event_queue))
+}
+
+/// Subscribe to compositor events and print them forever (until Ctrl-C).
+pub fn run_monitor(format: OutputFormat) -> Result<(), Error> {
+    let conn = Connection::connect_to_env().map_err(|e| Error::Connect(e.to_string()))?;
+    let (globals, mut event_queue) =
+        registry_queue_init(&conn).map_err(|e| Error::Connect(e.to_string()))?;
+    let qh = event_queue.handle();
+
+    let mut app_data = make_app_data(&globals, &qh)?;
+
+    let max_rounds = 100;
+    for _ in 0..max_rounds {
+        event_queue
+            .blocking_dispatch(&mut app_data)
+            .map_err(|e| Error::Other(e.to_string()))?;
+        if app_data.workspaces_done && app_data.toplevels_done {
+            break;
+        }
+    }
+
+    let mut monitor = MonitorConfig::new(format);
+    for ws in app_data.workspace_state.workspaces() {
+        monitor.known_workspaces.insert(ws.handle.clone());
+        monitor
+            .workspace_snapshots
+            .insert(ws.handle.clone(), (ws.name.clone(), ws.id.clone()));
+    }
+    app_data.monitor = Some(monitor);
+
+    loop {
+        event_queue
+            .blocking_dispatch(&mut app_data)
+            .map_err(|e| Error::Other(e.to_string()))?;
+    }
+}
+
+/// Subscribe to compositor events, calling `handler` for each one.
+/// Blocks until `handler` returns `Err`, or a Wayland connection error occurs.
+#[allow(dead_code)] // used via lib crate's `cosmicmsg::subscribe`
+pub fn run_monitor_with_handler(
+    handler: impl FnMut(MonitorEvent) -> Result<(), Error> + 'static,
+) -> Result<(), Error> {
+    let conn = Connection::connect_to_env().map_err(|e| Error::Connect(e.to_string()))?;
+    let (globals, mut event_queue) =
+        registry_queue_init(&conn).map_err(|e| Error::Connect(e.to_string()))?;
+    let qh = event_queue.handle();
+
+    let mut app_data = make_app_data(&globals, &qh)?;
+
+    // Phase 1: silent baseline sync.
+    let max_rounds = 100;
+    for _ in 0..max_rounds {
+        event_queue
+            .blocking_dispatch(&mut app_data)
+            .map_err(|e| Error::Other(e.to_string()))?;
+        if app_data.workspaces_done && app_data.toplevels_done {
+            break;
+        }
+    }
+
+    app_data.event_handler = Some(Box::new(handler));
+
+    // Phase 2: live event loop.
+    loop {
+        event_queue
+            .blocking_dispatch(&mut app_data)
+            .map_err(|e| Error::Other(e.to_string()))?;
+        if let Some(err) = app_data.handler_error.take() {
+            return Err(err);
+        }
+    }
+}
+--- /home/jirkadolezal/.cargo/git/checkouts/cosmicmsg-afdd0e089929c82f/881d2ca/src/output/mod.rs ---
+use crate::{OutputFormat, state::AppData};
+use serde::Serialize;
+use smithay_client_toolkit::output::OutputInfo;
+use wayland_client::protocol::wl_output::Transform;
+
+#[derive(Serialize)]
+pub struct OutputJson {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub make: String,
+    pub model: String,
+    pub width: i32,
+    pub height: i32,
+    pub refresh: i32,
+    pub x: i32,
+    pub y: i32,
+    pub scale: i32,
+    pub transform: String,
+    pub current_mode: Option<ModeJson>,
+}
+
+#[derive(Serialize)]
+pub struct ModeJson {
+    pub width: i32,
+    pub height: i32,
+    pub refresh: i32,
+}
+
+fn transform_name(t: Transform) -> &'static str {
+    match t {
+        Transform::Normal => "normal",
+        Transform::_90 => "90",
+        Transform::_180 => "180",
+        Transform::_270 => "270",
+        Transform::Flipped => "flipped",
+        Transform::Flipped90 => "flipped-90",
+        Transform::Flipped180 => "flipped-180",
+        Transform::Flipped270 => "flipped-270",
+        _ => "unknown",
+    }
+}
+
+pub fn output_info_to_json(info: &OutputInfo) -> OutputJson {
+    let current_mode = info.modes.iter().find(|m| m.current).map(|m| ModeJson {
+        width: m.dimensions.0,
+        height: m.dimensions.1,
+        refresh: m.refresh_rate,
+    });
+
+    let (width, height, refresh) = current_mode
+        .as_ref()
+        .map(|m| (m.width, m.height, m.refresh))
+        .unwrap_or((0, 0, 0));
+
+    let (x, y) = info.location;
+
+    OutputJson {
+        name: info.name.clone(),
+        description: info.description.clone(),
+        make: info.make.clone(),
+        model: info.model.clone(),
+        width,
+        height,
+        refresh,
+        x,
+        y,
+        scale: info.scale_factor,
+        transform: transform_name(info.transform).to_string(),
+        current_mode,
+    }
+}
+
+pub fn cmd_get_outputs(state: &AppData, format: OutputFormat) {
+    let outputs: Vec<OutputJson> = state
+        .output_state
+        .outputs()
+        .filter_map(|o| state.output_state.info(&o))
+        .map(|info| output_info_to_json(&info))
+        .collect();
+
+    match format {
+        OutputFormat::Json => {
+            println!("{}", serde_json::to_string(&outputs).unwrap());
+        }
+        OutputFormat::PrettyJson => {
+            println!("{}", serde_json::to_string_pretty(&outputs).unwrap());
+        }
+        OutputFormat::Human => {
+            for o in &outputs {
+                let name = o.name.as_deref().unwrap_or("unknown");
+                let desc = o.description.as_deref().unwrap_or("");
+                println!(
+                    "{} \"{}\" {}x{}@{:.3}Hz at ({}, {})",
+                    name,
+                    desc,
+                    o.width,
+                    o.height,
+                    o.refresh as f64 / 1000.0,
+                    o.x,
+                    o.y
+                );
+            }
+        }
+    }
+}
+
+// ── get-tree ─────────────────────────────────────────────────────────────────
+
+use crate::toplevels::ToplevelJson;
+
+#[derive(Serialize)]
+pub struct TreeOutput {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub width: i32,
+    pub height: i32,
+    pub x: i32,
+    pub y: i32,
+    pub workspaces: Vec<TreeWorkspace>,
+    /// Windows not associated with any workspace on this output
+    pub floating: Vec<ToplevelJson>,
+}
+
+#[derive(Serialize)]
+pub struct TreeWorkspace {
+    pub name: String,
+    pub id: Option<String>,
+    pub active: bool,
+    pub tiling: Option<String>,
+    pub windows: Vec<ToplevelJson>,
+}
+
+/// Build the output→workspace→window tree without printing.
+pub fn build_tree(state: &AppData) -> Vec<TreeOutput> {
+    use cosmic_protocols::workspace::v2::client::zcosmic_workspace_handle_v2::TilingState;
+    use wayland_client::WEnum;
+    use wayland_protocols::ext::workspace::v1::client::ext_workspace_handle_v1;
+
+    let outputs: Vec<_> = state
+        .output_state
+        .outputs()
+        .filter_map(|o| state.output_state.info(&o).map(|i| (o, i)))
+        .collect();
+
+    let workspaces: Vec<_> = state.workspace_state.workspaces().collect();
+    let groups: Vec<_> = state.workspace_state.workspace_groups().collect();
+    let toplevels: Vec<_> = state.toplevel_info_state.toplevels().collect();
+
+    let mut tree: Vec<TreeOutput> = Vec::new();
+
+    for (wl_output, info) in &outputs {
+        let group_handles_on_output: Vec<_> = groups
+            .iter()
+            .filter(|g| g.outputs.contains(wl_output))
+            .collect();
+
+        let mut tree_workspaces: Vec<TreeWorkspace> = Vec::new();
+
+        for group in &group_handles_on_output {
+            let mut wss_in_group: Vec<_> = workspaces
+                .iter()
+                .filter(|w| group.workspaces.contains(&w.handle))
+                .collect();
+            wss_in_group.sort_by(|a, b| a.coordinates.cmp(&b.coordinates));
+
+            for ws in wss_in_group {
+                let ws_windows: Vec<ToplevelJson> = toplevels
+                    .iter()
+                    .filter(|t| t.workspace.contains(&ws.handle))
+                    .map(|t| crate::toplevels::toplevel_to_json(t, state))
+                    .collect();
+
+                let active = ws.state.contains(ext_workspace_handle_v1::State::Active);
+                let tiling = ws.tiling.as_ref().map(|t| match t {
+                    WEnum::Value(TilingState::TilingEnabled) => "enabled".to_string(),
+                    WEnum::Value(TilingState::FloatingOnly) => "disabled".to_string(),
+                    _ => "unknown".to_string(),
+                });
+
+                tree_workspaces.push(TreeWorkspace {
+                    name: ws.name.clone(),
+                    id: ws.id.clone(),
+                    active,
+                    tiling,
+                    windows: ws_windows,
+                });
+            }
+        }
+
+        let floating: Vec<ToplevelJson> = toplevels
+            .iter()
+            .filter(|t| {
+                t.output.contains(wl_output)
+                    && !t
+                        .workspace
+                        .iter()
+                        .any(|ws_handle| workspaces.iter().any(|ws| &ws.handle == ws_handle))
+            })
+            .map(|t| crate::toplevels::toplevel_to_json(t, state))
+            .collect();
+
+        let (w, h) = info
+            .modes
+            .iter()
+            .find(|m| m.current)
+            .map(|m| (m.dimensions.0, m.dimensions.1))
+            .unwrap_or((0, 0));
+
+        let (x, y) = info.location;
+
+        tree.push(TreeOutput {
+            name: info.name.clone(),
+            description: info.description.clone(),
+            width: w,
+            height: h,
+            x,
+            y,
+            workspaces: tree_workspaces,
+            floating,
+        });
+    }
+
+    tree
+}
+
+pub fn cmd_get_tree(state: &AppData, format: OutputFormat) {
+    let tree = build_tree(state);
+
+    match format {
+        OutputFormat::Json => {
+            println!("{}", serde_json::to_string(&tree).unwrap());
+        }
+        OutputFormat::PrettyJson => {
+            println!("{}", serde_json::to_string_pretty(&tree).unwrap());
+        }
+        OutputFormat::Human => {
+            for output in &tree {
+                let name = output.name.as_deref().unwrap_or("unknown");
+                let desc = output.description.as_deref().unwrap_or("");
+                println!(
+                    "Output: {} \"{}\" {}x{} at ({}, {})",
+                    name, desc, output.width, output.height, output.x, output.y
+                );
+                for ws in &output.workspaces {
+                    let active_mark = if ws.active { " *" } else { "" };
+                    let tiling_mark = ws
+                        .tiling
+                        .as_deref()
+                        .map(|t| format!(" [tiling: {t}]"))
+                        .unwrap_or_default();
+                    println!("  Workspace: {}{}{}", ws.name, active_mark, tiling_mark);
+                    for win in &ws.windows {
+                        println!("    - \"{}\" ({})", win.title, win.app_id);
+                    }
+                }
+                if !output.floating.is_empty() {
+                    println!("  Floating/sticky:");
+                    for win in &output.floating {
+                        println!("    - \"{}\" ({})", win.title, win.app_id);
+                    }
+                }
+            }
+        }
+    }
+}
+--- /home/jirkadolezal/.cargo/git/checkouts/cosmicmsg-afdd0e089929c82f/881d2ca/src/monitor/mod.rs ---
+use crate::OutputFormat;
+use crate::toplevels::ToplevelJson;
+use crate::workspaces::WorkspaceJson;
+use serde::Serialize;
+
+/// A single event emitted in monitor/subscribe mode.
+#[derive(Serialize)]
+#[serde(tag = "type", rename_all = "kebab-case")]
+pub enum MonitorEvent {
+    /// A workspace was created or became visible for the first time.
+    WorkspaceAdded { workspace: WorkspaceJson },
+    /// A workspace's state changed (name, tiling, active, pinned, …).
+    WorkspaceUpdated { workspace: WorkspaceJson },
+    /// A workspace was removed.
+    WorkspaceRemoved { name: String, id: Option<String> },
+    /// A new window appeared.
+    WindowOpened { window: ToplevelJson },
+    /// A window's state changed (title, state flags, workspace, …).
+    WindowUpdated { window: ToplevelJson },
+    /// A window was closed.
+    WindowClosed {
+        title: String,
+        app_id: String,
+        identifier: String,
+    },
+}
+
+/// Print a single monitor event to stdout in the requested format.
+/// Uses ndjson (one JSON object per line) for Json/PrettyJson so the stream
+/// is trivially `jq`-filterable.
+pub fn print_event(event: &MonitorEvent, format: OutputFormat) {
+    match format {
+        OutputFormat::Human => print_human(event),
+        OutputFormat::Json => println!("{}", serde_json::to_string(event).unwrap()),
+        OutputFormat::PrettyJson => println!("{}", serde_json::to_string_pretty(event).unwrap()),
+    }
+}
+
+fn print_human(event: &MonitorEvent) {
+    match event {
+        MonitorEvent::WorkspaceAdded { workspace } => {
+            let active = if workspace.active { " *" } else { "" };
+            let tiling = workspace
+                .tiling
+                .as_deref()
+                .map(|t| format!(" [tiling: {t}]"))
+                .unwrap_or_default();
+            let on = workspace
+                .output
+                .as_deref()
+                .map(|o| format!(" on {o}"))
+                .unwrap_or_default();
+            println!(
+                "workspace-added   {}{}{}{}",
+                workspace.name, active, tiling, on
+            );
+        }
+        MonitorEvent::WorkspaceUpdated { workspace } => {
+            let active = if workspace.active { " *" } else { "" };
+            let pinned = if workspace.pinned { " [pinned]" } else { "" };
+            let tiling = workspace
+                .tiling
+                .as_deref()
+                .map(|t| format!(" [tiling: {t}]"))
+                .unwrap_or_default();
+            let on = workspace
+                .output
+                .as_deref()
+                .map(|o| format!(" on {o}"))
+                .unwrap_or_default();
+            println!(
+                "workspace-updated {}{}{}{}{}",
+                workspace.name, active, pinned, tiling, on
+            );
+        }
+        MonitorEvent::WorkspaceRemoved { name, .. } => {
+            println!("workspace-removed {name}");
+        }
+        MonitorEvent::WindowOpened { window } => {
+            let state = if window.state.is_empty() {
+                String::new()
+            } else {
+                format!(" [{}]", window.state.join(", "))
+            };
+            println!(
+                "window-opened     \"{}\" ({}){}",
+                window.title, window.app_id, state
+            );
+        }
+        MonitorEvent::WindowUpdated { window } => {
+            let state = if window.state.is_empty() {
+                String::new()
+            } else {
+                format!(" [{}]", window.state.join(", "))
+            };
+            println!(
+                "window-updated    \"{}\" ({}){}",
+                window.title, window.app_id, state
+            );
+        }
+        MonitorEvent::WindowClosed { title, app_id, .. } => {
+            println!("window-closed     \"{title}\" ({app_id})");
+        }
+    }
+}

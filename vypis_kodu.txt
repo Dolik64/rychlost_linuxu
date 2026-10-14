@@ -1,0 +1,406 @@
+=== SYSTEM & BINARIES ===
+-rwxrwxr-x 2 jirkadolezal jirkadolezal 2120088 Oct  8 21:06 /home/jirkadolezal/cosmic-ws-switcher/target/release/cosmic-ws-switcher
+-rwxr-xr-x 1 jirkadolezal jirkadolezal 2132168 Oct  8 20:37 /home/jirkadolezal/.local/bin/cosmic-ws-switcher
+0c6c6aa21d6bca85c57e4fc7b9060516f45055e21e70e75abdfd75991f79b1cd  /home/jirkadolezal/.local/bin/cosmic-ws-switcher
+9c5e999a2f1c1ee679ad558b6f56b84eaf86479d55164093206de3c2b8ddafc8  /home/jirkadolezal/cosmic-ws-switcher/target/release/cosmic-ws-switcher
+
+=== SHORTCUTS CONFIG ===
+{
+    (
+        modifiers: [
+            Super,
+        ],
+        key: "Left",
+        description: Some("prev"),
+    ): Spawn("/home/jirkadolezal/.local/bin/cosmic-ws-switcher prev"),
+    (
+        modifiers: [
+            Super,
+        ],
+        key: "Right",
+        description: Some("next"),
+    ): Spawn("/home/jirkadolezal/.local/bin/cosmic-ws-switcher next"),
+}
+=== CARGO.TOML ===
+[package]
+name = "cosmic-ws-switcher"
+version = "0.1.0"
+edition = "2021"
+description = "Fast current-workspace Alt+Tab switcher for the COSMIC desktop"
+license = "MIT"
+
+[dependencies]
+cosmicmsg = { git = "https://github.com/varbhat/cosmicmsg.git" }
+=== FILE: /home/jirkadolezal/cosmic-ws-switcher/src/main.rs ===
+use cosmicmsg::{collect_state, subscribe, window_activate, MonitorEvent};
+use std::{
+    collections::{HashMap, HashSet},
+    env, fs,
+    io::{Read, Write},
+    os::unix::net::{UnixListener, UnixStream},
+    path::PathBuf,
+    sync::{Arc, Mutex},
+    thread,
+};
+
+#[derive(Debug, Clone)]
+struct Window {
+    identifier: String,
+    workspaces: Vec<String>,
+    states: Vec<String>,
+}
+
+#[derive(Debug, Default)]
+struct SwitcherState {
+    windows: HashMap<String, Window>,
+    order: Vec<String>,
+
+    // Pode existir mais de uma workspace "active" em setups
+    // com múltiplos monitores.
+    active_workspaces: HashSet<String>,
+
+    // Janela atualmente focada.
+    current: Option<String>,
+}
+
+impl SwitcherState {
+    fn insert_or_update(
+        &mut self,
+        identifier: String,
+        workspaces: Vec<String>,
+        states: Vec<String>,
+    ) {
+        if !self.windows.contains_key(&identifier) {
+            self.order.push(identifier.clone());
+        }
+
+        if states.iter().any(|s| s == "activated") {
+            self.current = Some(identifier.clone());
+        }
+
+        self.windows.insert(
+            identifier.clone(),
+            Window {
+                identifier,
+                workspaces,
+                states,
+            },
+        );
+    }
+
+    fn remove_window(&mut self, identifier: &str) {
+        self.windows.remove(identifier);
+        self.order.retain(|id| id != identifier);
+
+        if self.current.as_deref() == Some(identifier) {
+            self.current = None;
+        }
+    }
+
+    fn workspace_for_switching(&self) -> Option<String> {
+        // Preferir a workspace da janela focada.
+        // Isso é mais correto em setups com mais de um monitor.
+        if let Some(current) = &self.current {
+            if let Some(win) = self.windows.get(current) {
+                // Preferir uma workspace da janela que também esteja ativa.
+                if let Some(ws) = win
+                    .workspaces
+                    .iter()
+                    .find(|ws| self.active_workspaces.contains(*ws))
+                {
+                    return Some(ws.clone());
+                }
+
+                // Fallback.
+                if let Some(ws) = win.workspaces.first() {
+                    return Some(ws.clone());
+                }
+            }
+        }
+
+        self.active_workspaces.iter().next().cloned()
+    }
+
+    fn candidates(&self, workspace: &str) -> Vec<String> {
+        self.order
+            .iter()
+            .filter_map(|id| {
+                let win = self.windows.get(id)?;
+
+                let sticky = win.states.iter().any(|s| s == "sticky");
+
+                if sticky || win.workspaces.iter().any(|ws| ws == workspace) {
+                    Some(win.identifier.clone())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    fn select(&mut self, direction: Direction) -> Option<String> {
+        let workspace = self.workspace_for_switching()?;
+        let candidates = self.candidates(&workspace);
+
+        if candidates.len() <= 1 {
+            return None;
+        }
+
+        let index = self
+            .current
+            .as_ref()
+            .and_then(|current| candidates.iter().position(|id| id == current));
+
+        let target_index = match (direction, index) {
+            (Direction::Next, Some(i)) => (i + 1) % candidates.len(),
+
+            (Direction::Prev, Some(i)) => {
+                if i == 0 {
+                    candidates.len() - 1
+                } else {
+                    i - 1
+                }
+            }
+
+            (Direction::Next, None) => 0,
+            (Direction::Prev, None) => candidates.len() - 1,
+        };
+
+        let target = candidates[target_index].clone();
+
+        // Atualizar imediatamente, sem esperar o evento Wayland voltar.
+        // Importante para Alt+Tab pressionado rapidamente.
+        self.current = Some(target.clone());
+
+        Some(target)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Direction {
+    Next,
+    Prev,
+}
+
+fn socket_path() -> PathBuf {
+    if let Ok(runtime) = env::var("XDG_RUNTIME_DIR") {
+        PathBuf::from(runtime).join("cosmic-ws-switcher.sock")
+    } else {
+        PathBuf::from(format!("/tmp/cosmic-ws-switcher-{}.sock", unsafe {
+            libc_getuid()
+        }))
+    }
+}
+
+// Evita adicionar libc como dependência apenas para o fallback.
+// Normalmente XDG_RUNTIME_DIR sempre estará disponível numa sessão COSMIC.
+unsafe fn libc_getuid() -> u32 {
+    #[cfg(target_os = "linux")]
+    {
+        extern "C" {
+            fn getuid() -> u32;
+        }
+        getuid()
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        0
+    }
+}
+
+fn initialize_state() -> Result<SwitcherState, Box<dyn std::error::Error>> {
+    let (state, _event_queue) = collect_state()?;
+
+    let mut result = SwitcherState::default();
+
+    for ws in state.workspaces() {
+        if ws.active {
+            result.active_workspaces.insert(ws.name);
+        }
+    }
+
+    for win in state.toplevels() {
+        result.insert_or_update(win.identifier, win.workspaces, win.state);
+    }
+
+    Ok(result)
+}
+
+fn start_monitor(shared: Arc<Mutex<SwitcherState>>) {
+    thread::spawn(move || {
+        let result = subscribe(move |event| {
+            let mut state = shared.lock().unwrap();
+
+            match event {
+                MonitorEvent::WindowOpened { window } | MonitorEvent::WindowUpdated { window } => {
+                    state.insert_or_update(window.identifier, window.workspaces, window.state);
+                }
+
+                MonitorEvent::WindowClosed { identifier, .. } => {
+                    state.remove_window(&identifier);
+                }
+
+                MonitorEvent::WorkspaceAdded { workspace }
+                | MonitorEvent::WorkspaceUpdated { workspace } => {
+                    if workspace.active {
+                        state.active_workspaces.insert(workspace.name);
+                    } else {
+                        state.active_workspaces.remove(&workspace.name);
+                    }
+                }
+
+                MonitorEvent::WorkspaceRemoved { name, .. } => {
+                    state.active_workspaces.remove(&name);
+                }
+            }
+
+            Ok(())
+        });
+
+        if let Err(error) = result {
+            eprintln!("monitor Wayland terminou: {error}");
+        }
+    });
+}
+
+fn run_daemon() -> Result<(), Box<dyn std::error::Error>> {
+    let socket = socket_path();
+
+    if socket.exists() {
+        fs::remove_file(&socket)?;
+    }
+
+    let initial = initialize_state()?;
+    let shared = Arc::new(Mutex::new(initial));
+
+    start_monitor(shared.clone());
+
+    // Persistent Wayland connection used for window activation.
+    // This avoids spawning cosmicmsg for every key press.
+    let (mut control_state, mut control_eq) = collect_state()?;
+
+    let listener = UnixListener::bind(&socket)?;
+
+    eprintln!("cosmic-ws-switcher daemon ativo em {}", socket.display());
+
+    for connection in listener.incoming() {
+        let mut stream = match connection {
+            Ok(stream) => stream,
+            Err(error) => {
+                eprintln!("erro no socket: {error}");
+                continue;
+            }
+        };
+
+        let mut command = String::new();
+        stream.read_to_string(&mut command)?;
+
+        let direction = match command.trim() {
+            "next" => Direction::Next,
+            "prev" => Direction::Prev,
+
+            "ping" => {
+                let _ = stream.write_all(b"pong\n");
+                continue;
+            }
+
+            "status" => {
+                let state = shared.lock().unwrap();
+
+                let text = format!(
+                    "windows={} current={:?} active_workspaces={:?}\n",
+                    state.windows.len(),
+                    state.current,
+                    state.active_workspaces
+                );
+
+                let _ = stream.write_all(text.as_bytes());
+                continue;
+            }
+
+            other => {
+                eprintln!("comando desconhecido: {other}");
+                continue;
+            }
+        };
+
+        let target = {
+            let mut state = shared.lock().unwrap();
+            state.select(direction)
+        };
+
+        if let Some(identifier) = target {
+            if let Err(first_error) =
+                window_activate(&mut control_state, &mut control_eq, &identifier)
+            {
+                eprintln!(
+                    "refreshing Wayland control state after activation error: {first_error}"
+                );
+
+                match collect_state() {
+                    Ok((new_state, new_eq)) => {
+                        control_state = new_state;
+                        control_eq = new_eq;
+
+                        if let Err(error) =
+                            window_activate(&mut control_state, &mut control_eq, &identifier)
+                        {
+                            eprintln!("error activating window {identifier}: {error}");
+                        }
+                    }
+                    Err(error) => {
+                        eprintln!("error refreshing Wayland control state: {error}");
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn send_command(command: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let socket = socket_path();
+    let mut stream = UnixStream::connect(&socket)?;
+
+    stream.write_all(command.as_bytes())?;
+    stream.shutdown(std::net::Shutdown::Write)?;
+
+    if matches!(command, "ping" | "status") {
+        let mut response = String::new();
+        stream.read_to_string(&mut response)?;
+        print!("{response}");
+    }
+
+    Ok(())
+}
+
+fn main() {
+    let argument = env::args().nth(1).unwrap_or_else(|| "help".to_string());
+
+    let result = match argument.as_str() {
+        "daemon" => run_daemon(),
+        "next" => send_command("next"),
+        "prev" => send_command("prev"),
+        "ping" => send_command("ping"),
+        "status" => send_command("status"),
+
+        _ => {
+            eprintln!(
+                "Uso:
+  cosmic-ws-switcher daemon
+  cosmic-ws-switcher next
+  cosmic-ws-switcher prev
+  cosmic-ws-switcher status
+  cosmic-ws-switcher ping"
+            );
+            return;
+        }
+    };
+
+    if let Err(error) = result {
+        eprintln!("cosmic-ws-switcher: {error}");
+        std::process::exit(1);
+    }
+}
