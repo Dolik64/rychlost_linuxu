@@ -1,78 +1,131 @@
-# Nekonečné přepínání oken na macOS
+# Ovládání macOS po vzoru Pop!_OS
 
-Přepínač pro [Hammerspoon](https://www.hammerspoon.org/) inspirovaný
-`cosmic-ws-switcher v0.2.0` z vedlejšího souboru.
+Aktivní profil pro Hammerspoon. **Option nahrazuje Super**.
+Načítá se přes `/Users/jirka/.hammerspoon/init.lua`; Hammerspoon se spouští při přihlášení.
 
-- **Control + Option + →**: další okno, včetně přechodu z posledního na první.
-- **Control + Option + ←**: předchozí okno, včetně přechodu z prvního na poslední.
-- Funguje i po úplném puštění a opětovném stisku zkratky i při jejím držení.
-- Pořadí se nemění podle posledního použití. Nově zjištěná okna se přidávají na konec.
-- Zahrnuje běžná okna různých aplikací na aktuální ploše a monitoru.
-- Pomocné dialogy vynechává: některé při aktivaci vracejí fokus na své hlavní okno,
-  což by způsobilo přeskakování v cyklu.
-- Vynechává minimalizovaná okna a skryté aplikace. Překrytá okna zahrnuje.
+| Zkratka | Akce |
+|---|---|
+| Option + → / ↓ | Další okno, po posledním znovu první |
+| Option + ← / ↑ | Předchozí okno, po prvním znovu poslední |
+| Option + Shift + šipka | Rozložení aktivního volného okna směrem k okraji |
+| Option + Control + → / ↓ | Další běžná plocha |
+| Option + Control + ← / ↑ | Předchozí běžná plocha |
+| Option + Control + Shift + šipka | Přesun okna na sousední plochu a přechod s ním |
+| Option + W | Otevřít / zavřít Mission Control |
+| Option + Tab | Dosavadní AltTab |
 
-## Zapnutí
+## Rozkládání oken
 
-1. Nainstaluj Hammerspoon z jeho oficiálního webu, spusť jej a povol mu
-   **Nastavení systému → Soukromí a zabezpečení → Zpřístupnění**.
-2. V nabídce Hammerspoonu vyber **Open Config**. Do konfigurace přidej následující
-   řádky; stávající obsah ponech:
+Používá přechody volných oken z COSMIC, nikoli automatické dlaždicování všech oken:
 
-```lua
-if windowCycle then windowCycle.stop() end
-windowCycle = dofile("/Users/jirka/Documents/rychlost_linuxu/tocime okna na plose/macos/window-cycle.lua").start()
+- Ze základní velikosti: vlevo, vpravo, nahoru nebo dolů → příslušná polovina.
+- Kolmá šipka → roh. Například vlevo, pak nahoru → levá horní čtvrtina.
+- Opačná šipka rozšíří danou osu. Levý horní roh + dolů → levá polovina.
+- Levá polovina + doprava → maximalizace v použitelné ploše obrazovky.
+- Opakovaná šipka ven z již dosaženého okraje okno nechá na místě.
+  Přesun na další plochu je záměrně na výslovné kombinaci s Control.
+  COSMIC může v tomto bodě přesouvat dál na plochu nebo monitor; tato část není shodná.
+- Ruční změna velikosti/polohy se rozpozná; další šipka vychází z aktuálního okna.
+- Aplikace si může vynutit minimální velikost. Například zdejší Finder nedovolí
+  šířku menší než 843 bodů, zatímco polovina monitoru má 756. Takové okno zůstane
+  přisazené ke správnému okraji, ale bude širší než polovina.
+
+## Přesun mezi plochami
+
+Přesun probíhá přes náhledy v Mission Control. Běžné rozhraní Hammerspoonu na tomto
+Macu vracelo úspěch, ale okno jiné aplikace se ve skutečnosti nepřesunulo.
+Nový postup skutečné umístění, aktivní plochu a fokus kontroluje.
+
+Po stisku **pusť modifikátory**. Přesun obvykle trvá přibližně 3–5 sekund;
+na chvíli se zobrazí Mission Control a pohne kurzor. Po dokončení se kurzor vrátí.
+Během přesunu nehýbej myší. Escape přesun zruší. Další naše zkratky během
+přesunu nevstupují do rozpracované operace.
+
+- ← a ↑ znamenají předchozí, → a ↓ následující plochu v aktuálním pořadí macOS.
+- Na prvním/posledním místě se nepřeskakuje na opačný konec a nevytvářejí se nové plochy.
+- Přesouvají se běžná okna na běžné plochy stejného monitoru.
+- Nativní fullscreen a okna připnutá na všechny plochy jsou vynechána.
+- Mission Control neposkytuje ID náhledů oken. Skript proto vyžaduje jediný přesně
+  odpovídající název na daném monitoru. Dva stejné názvy nebo zkrácený název mohou
+  přesun znemožnit; v takovém případě se zobrazí zpráva a žádný náhled se nepřetahuje.
+- Rozhraní Mission Control se může změnit s aktualizací macOS. Více fyzických
+  monitorů nebylo v této relaci živě vyzkoušeno.
+
+## Cyklus oken
+
+Navazuje na linuxový `cosmic-ws-switcher v0.2.0` z vedlejšího souboru.
+Pořadí zůstává stálé a nemění se podle posledního použití. Nově zjištěná okna se
+přidávají na konec. Zahrnuje běžná viditelná okna aplikací na aktuální ploše
+aktuálního monitoru; skryté aplikace, minimalizovaná okna a pomocné dialogy vynechává.
+Překrytá okna zahrnuje. Dialogy mohou přesměrovávat fokus na rodiče a rozbíjet cyklus.
+Podporuje opakované stisky i držení šipky. Při rychlém vstupu navazuje až 800 ms na
+poslední vybraný cíl, než macOS doručí skutečnou změnu fokusu.
+
+## Zjištěné kolize a změny
+
+| Původní chování | Řešení |
+|---|---|
+| Rectangle: Control + Option + čtyři šipky rozkládaly na poloviny | Tyto čtyři vazby odstraněny; nově přepínají plochy |
+| Rectangle: Control + Option + Shift + ↑ zvětšovalo výšku | Vazba odstraněna; nově přesouvá okno na předchozí plochu |
+| Původní Hammerspoon: Control + Option + ←/→ cyklovalo okna | Cyklus přesunut na samotné Option + šipky |
+| AltTab: W v otevřeném přehledu zavíralo vybrané okno | Zavírání v přehledu změněno na Backspace (⌫) |
+| Option + W v rozložení US píše ∑ | Převzato pro Mission Control podle požadavku |
+| Option + šipky posouvají textový kurzor po slovech/odstavcích | Globálně převzato pro cyklus oken |
+| Option + Shift + šipky rozšiřují výběr textu | Globálně převzato pro rozložení oken |
+
+AltTab má nadále Option + Tab a ostatní nastavení; běžné Command + W zavírá okno
+jako dříve. Ostatní zkratky Rectangle zůstaly. Registrace všech 17 nových zkratek
+v Hammerspoonu prošla. VoiceOver používá některé kombinace Control + Option;
+při jeho případném zapnutí by bylo nutné profil znovu sladit.
+
+## Ověření 15. 10. 2026
+
+- Uživatel potvrdil funkčnost fyzických kláves **Option + Shift + ←** a **Option + W**.
+- 13 regresních testů cyklu: obě směrové smyčky, rychlé stisky, opožděný fokus,
+  přidání/zavření okna, změna plochy, výběr monitoru, pozastavení při přesunu.
+- 45 kontrol geometrie: poloviny, rohy, opačné směry, liché rozměry a záporné
+  souřadnice druhého monitoru.
+- Živě: úplný cyklus přes 17 oken v obou směrech, včetně návratu na začátek.
+  Nejdelší čekání na potvrzení fokusu bylo 0,52 s.
+- Živě: 32 změn rozložení v TextEditu a Finderu; 24 přesných a 8 s respektováním
+  minimální velikosti Finderu. Původní rozměry testovaných oken byly obnoveny.
+- Živě: čtyři přesuny testovacího okna TextEditu mezi dvěma plochami tam a zpět.
+  Každý ověřil skutečné členství na ploše, aktivní plochu, fokus i zachování rámu.
+- Automaticky zasílané klávesy nástroje pro ovládání aplikací neaktivovaly globální
+  Hammerspoon zkratky. Živé automatické testy proto volají stejné akce z profilu;
+  nejsou samy o sobě důkazem průchodu fyzické klávesy přes ostatní aplikace.
+
+Testy bez ovládání skutečných oken se spouštějí v této složce:
+
+```sh
+lua test-window-cycle.lua
+lua test-snap-layout.lua
 ```
 
-3. Vyber **Reload Config**. S alespoň třemi okny na jedné ploše opakovaně stiskni
-   Control + Option + →. Po posledním okně se musí znovu aktivovat první.
-   Vyzkoušej i opačný směr a opakované stisky s úplným puštěním všech kláves.
+Živé testy lze spustit v konzoli Hammerspoonu pomocí `dofile` s absolutní cestou:
+`validate-live.lua` pro cyklus, `validate-layout-live.lua` pro rozložení a
+`validate-spaces-live.lua` pro přesuny. Poslední dva očekávají testovací dokument
+`Codex-window-test-20261015.rtf` v TextEditu; není součástí běžného používání.
+Během testů neklikej do jiných oken. Výsledky se vypisují do konzole.
 
-Skript nenahrazuje systémovou zkratku Control + F4. Má vlastní zkratky;
-nepotřebuje přehled oken ani potvrzení výběru. Jejich dostupnost závisí na dalších
-globálních zkratkách, včetně případně zapnutého VoiceOveru.
+## Záloha a vypnutí
 
-## Úpravy
+Původní konfigurace a exporty nastavení jsou v místní složce `backups/`
+s prefixem `2026-10-15-before-option-shortcuts-`. Je vyloučená z Gitu.
 
-Jinou kombinaci modifikátorů lze předat do `.start()`, například
-`.start({modifiers = {"ctrl", "alt", "cmd"}})`.
+Dočasné vypnutí celého profilu v konzoli Hammerspoonu: `linuxControls.stop()`.
+Opětovné zapnutí: `linuxControls.start()` nebo Reload Config.
 
-Ve výchozím nastavení se vybírá monitor aktivního okna. Pokud chceš zahrnout
-aktuálně viditelné plochy na všech monitorech, použij
-`.start({onlyCurrentScreen = false})`.
+Pro návrat k původnímu cyklu zkopíruj zálohu `init.lua` do
+`/Users/jirka/.hammerspoon/init.lua` a zvol Reload Config. Tím se neobnoví nastavení
+Rectangle ani AltTab. Jejich změněné vazby lze vrátit jednotlivě podle tabulky výše;
+případně lze po ukončení dané aplikace obnovit celý její export nastavení ze zálohy.
+Celý export by nahradil i případné pozdější úpravy.
 
-Pro vypnutí odstraň přidané řádky z konfigurace a zvol **Reload Config**.
+## Zdroje
 
-## Ověření a omezení
-
-**15. 10. 2026: zapnuto na tomto Macu a živě ověřeno na 13 otevřených oknech.**
-Kontrola prošla v obou směrech, včetně návratu na první okno, bez vynechání
-kteréhokoli zahrnutého okna. Hammerspoon má povolené Zpřístupnění a konfigurace
-je načtená z `/Users/jirka/.hammerspoon/init.lua`.
-
-Ověřeno automatickými testy se simulovanými okny: opakované oběhy v obou směrech,
-rychlé stisky před dokončením aktivace okna, změny seznamu oken, změna plochy,
-výběr monitoru a uvolnění zkratek při vypnutí. Testy spouští `lua test-window-cycle.lua`
-v této složce. Ověření skutečného ovládání aplikací na macOS vyžaduje běžící
-Hammerspoon s uděleným oprávněním.
-
-Živou kontrolu lze spustit v konzoli Hammerspoonu:
-
-```lua
-dofile("/Users/jirka/Documents/rychlost_linuxu/tocime okna na plose/macos/validate-live.lua")
-```
-
-Kontrola dočasně aktivuje všechna zahrnutá okna v obou směrech, ověří návrat na
-první okno i skutečný fokus a nakonec vrátí původní okno. Během kontroly neklikej
-do dalších oken. Konzole vypíše PASS nebo FAIL; protokol obsahuje jen ID oken.
-
-Hammerspoon upozorňuje na zpoždění aktualizace seznamu oken po změně plochy.
-Bezprostředně během přechodu mezi plochami je proto potřeba chování ověřit.
-Při rychlých stiscích skript až 300 ms navazuje na poslední požadovaný cíl;
-ruční přepnutí jinam v tomto krátkém intervalu může být dalším stiskem přehlédnuto.
-Při startu vychází pořadí z toho, jak Hammerspoon zjistí již otevřená okna.
-Čísla latence linuxové verze nejsou měřením tohoto přepínače.
-
-Dokumentace: [filtr oken](https://www.hammerspoon.org/docs/hs.window.filter.html),
-[aktivace okna](https://www.hammerspoon.org/docs/hs.window.html#focus),
-[zkratky](https://www.hammerspoon.org/docs/hs.hotkey.html#bind).
+[COSMIC – oficiální zkratky](https://support.system76.com/articles/pop-cosmic-keyboard-shortcuts/),
+[COSMIC – logika volných oken](https://github.com/pop-os/cosmic-comp/blob/master/src/shell/layout/floating/mod.rs),
+[Hammerspoon – Spaces](https://www.hammerspoon.org/docs/hs.spaces.html),
+[Hammerspoon – zkratky](https://www.hammerspoon.org/docs/hs.hotkey.html),
+[Drag.spoon – přístup přes Mission Control](https://github.com/mogenson/Drag.spoon).

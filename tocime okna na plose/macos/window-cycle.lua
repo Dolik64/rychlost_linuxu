@@ -6,6 +6,7 @@ local hotkeys = {}
 local ranks, nextRank = {}, 0
 local pendingID, pendingUntil, pendingScreen
 local onlyCurrentScreen = true
+local enabledWhen
 
 local function resetPending()
     pendingID, pendingUntil, pendingScreen = nil, nil, nil
@@ -30,7 +31,7 @@ local function candidates(screenID)
 end
 
 local function cycle(step)
-    if not filter then return end
+    if not filter or (enabledWhen and not enabledWhen()) then return end
     local focused = hs.window.focusedWindow()
     local screen = (focused and focused:screen()) or hs.screen.mainScreen()
     local screenID = screen and screen:id()
@@ -58,7 +59,7 @@ local function cycle(step)
     end
 
     local target = windows[targetIndex]
-    pendingID, pendingUntil, pendingScreen = target:id(), now + 0.3, screenID
+    pendingID, pendingUntil, pendingScreen = target:id(), now + 0.8, screenID
     local ok, result = pcall(function() return target:focus() end)
     if not ok or not result then
         resetPending()
@@ -85,6 +86,7 @@ function M.start(options)
     M.stop()
     options = options or {}
     onlyCurrentScreen = options.onlyCurrentScreen ~= false
+    enabledWhen = options.enabledWhen
     local mods = options.modifiers or {"ctrl", "alt"}
     filter = hs.window.filter.new():setOverrideFilter({
         currentSpace = true,

@@ -19,7 +19,7 @@ for _, win in ipairs(filter:getWindows()) do
 end
 filter:unsubscribeAll():pause()
 assert(count > 1, "At least two windows are required")
-local p = {forward = {}, backward = {}, count = count, done = false}
+local p = {forward = {}, backward = {}, count = count, done = false, maxFocusDelay = 0}
 windowCycleProbe = p
 
 local function finish(err)
@@ -27,6 +27,7 @@ local function finish(err)
     p.error = err
     if original then pcall(function() original:focus() end) end
     print("Window cycle live check:", err and "FAIL" or "PASS", "windows:", count)
+    print("Maximum focus wait:", p.maxFocusDelay)
     print("Forward IDs:", table.concat(p.forward, ","))
     print("Backward IDs:", table.concat(p.backward, ","))
     if err then print(err) end
@@ -60,16 +61,23 @@ step = function()
     if not forward and #sequence == count + 1 then finish(verify()); return end
     local ok, requestedID = pcall(forward and windowCycle.next or windowCycle.previous)
     if not ok then finish(tostring(requestedID)); return end
-    p.timer = hs.timer.doAfter(0.35, function()
+    local started=hs.timer.secondsSinceEpoch()
+    local function checkFocus()
         local focused = hs.window.focusedWindow()
         local actualID = (focused and focused:id()) or -1
+        local delay=hs.timer.secondsSinceEpoch()-started
+        if actualID ~= requestedID and delay<1.2 then
+            p.timer=hs.timer.doAfter(0.1,checkFocus); return
+        end
         if actualID ~= requestedID then
             finish("Focus mismatch: requested " .. tostring(requestedID) .. ", actual " .. actualID)
             return
         end
+        p.maxFocusDelay=math.max(p.maxFocusDelay,delay)
         sequence[#sequence + 1] = actualID
-        p.timer = hs.timer.doAfter(0.2, step)
-    end)
+        p.timer = hs.timer.doAfter(0.35, step)
+    end
+    p.timer = hs.timer.doAfter(0.15,checkFocus)
 end
 print("Window cycle live check started:", count, "windows, both directions")
-p.timer = hs.timer.doAfter(0.5, step)
+p.timer = hs.timer.doAfter(2, step)

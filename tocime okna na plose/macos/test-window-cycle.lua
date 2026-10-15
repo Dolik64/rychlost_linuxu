@@ -171,4 +171,18 @@ test("keypress and hold callbacks work and stop removes bindings", function()
     m.next(); equal(#s.targets, 3)
 end)
 
+test("cycling is suspended during a Space transition", function()
+    local enabled = false
+    local s, m = setup({enabledWhen = function() return enabled end})
+    m.next(); s.keys.left.pressed(); equal(#s.targets, 0)
+    enabled = true
+    m.next(); equal(s.last(), 2)
+end)
+
+test("half-second focus delay still advances at human repeat speed", function()
+    local s, m = setup()
+    s.settle = false
+    for i=1,9 do s.tick(0.4); m.next(); equal(s.last(), (i%3)+1) end
+end)
+
 print(string.format("%d tests passed", tests))
