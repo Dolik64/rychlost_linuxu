@@ -1,4 +1,4 @@
-FOLDER DUMP - 2026-10-16 10:32:17.180347
+FOLDER DUMP - 2026-10-16 10:50:03.094556
 ================================================================================
 
 DIRECTORY TREE
@@ -9,6 +9,7 @@ ROOT: /home/jirkadolezal/Documents/testuju rychlost linuxu/alt tab
   [F] .DS_Store
   [F] README.md
   [D] ver 1.4
+    [F] Cargo.lock
     [F] Cargo.toml
     [F] install.py
     [F] LICENSE

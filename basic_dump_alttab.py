@@ -71,7 +71,9 @@ def should_exclude_dir(dir_path: Path, rel_dir: Path) -> bool:
         return True
     return False
 
-def should_exclude_file(file_path: Path, rel_file: Path) -> bool:
+def should_exclude_file(file_path: Path, rel_file: Path, for_content=False) -> bool:
+    if file_path.name == "Cargo.lock":
+        return for_content
     if file_path.name in EXCLUDED_FILES:
         return True
     if file_path.suffix.lower() in {e.lower() for e in EXCLUDED_EXTS}:
@@ -116,7 +118,7 @@ def iter_files(root: Path):
         for d in pruned: dirnames.remove(d)
         for fn in sorted(filenames, key=lambda x: x.lower()):
             fp = dir_path / fn
-            if not should_exclude_file(fp, fp.relative_to(root)):
+            if not should_exclude_file(fp, fp.relative_to(root), for_content=True):
                 yield fp, fp.relative_to(root)
 
 def read_text_safely(path: Path) -> tuple[str | None, str]:
