@@ -411,4 +411,4 @@ Used Org.hammerspoon.hammerspoon integration, ran commands
 
 
 
-You've hit your usage limit. Upgrade your plan or add credits to continue, or try again later.
+You've hit your usage limit. Upgrade your plan or add credits to continue, or try again later
