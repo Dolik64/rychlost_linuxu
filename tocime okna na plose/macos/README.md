@@ -36,7 +36,8 @@ Přesun probíhá přes náhledy v Mission Control. Běžné rozhraní Hammerspo
 Macu vracelo úspěch, ale okno jiné aplikace se ve skutečnosti nepřesunulo.
 Nový postup skutečné umístění, aktivní plochu a fokus kontroluje.
 
-Po stisku **pusť modifikátory**. Přesun obvykle trvá přibližně 3–5 sekund;
+Po stisku **pusť modifikátory**. Po zrychlení 16. 10. trval celý přesun v opakovaném testu **1,95–2,25 sekundy**
+(původní verze přibližně 3–5 sekund);
 na chvíli se zobrazí Mission Control a pohne kurzor. Po dokončení se kurzor vrátí.
 Během přesunu nehýbej myší. Escape přesun zruší. Další naše zkratky během
 přesunu nevstupují do rozpracované operace.
@@ -78,7 +79,7 @@ jako dříve. Ostatní zkratky Rectangle zůstaly. Registrace všech 17 nových 
 v Hammerspoonu prošla. VoiceOver používá některé kombinace Control + Option;
 při jeho případném zapnutí by bylo nutné profil znovu sladit.
 
-## Ověření 15. 10. 2026
+## Ověření 15.–16. 10. 2026
 
 - Uživatel potvrdil funkčnost fyzických kláves **Option + Shift + ←** a **Option + W**.
 - 13 regresních testů cyklu: obě směrové smyčky, rychlé stisky, opožděný fokus,
@@ -86,11 +87,18 @@ při jeho případném zapnutí by bylo nutné profil znovu sladit.
 - 45 kontrol geometrie: poloviny, rohy, opačné směry, liché rozměry a záporné
   souřadnice druhého monitoru.
 - Živě: úplný cyklus přes 17 oken v obou směrech, včetně návratu na začátek.
-  Nejdelší čekání na potvrzení fokusu bylo 0,52 s.
+  Nejdelší čekání na potvrzení fokusu bylo 0,52 s. Po úpravě návaznosti rychlých
+  stisků prošel 16. 10. i celý cyklus šesti oken aktuální plochy v obou směrech
+  (nejdelší potvrzení fokusu 0,16 s).
 - Živě: 32 změn rozložení v TextEditu a Finderu; 24 přesných a 8 s respektováním
   minimální velikosti Finderu. Původní rozměry testovaných oken byly obnoveny.
 - Živě: čtyři přesuny testovacího okna TextEditu mezi dvěma plochami tam a zpět.
   Každý ověřil skutečné členství na ploše, aktivní plochu, fokus i zachování rámu.
+  Po zrychlení 16. 10. prošly další čtyři přesuny za 2,18 / 2,25 / 1,95 / 2,00 s.
+  Skript čeká na skutečnou připravenost a výsledek jednotlivých kroků;
+  po přetažení znovu načte cílovou plochu z obnoveného přehledu.
+- Živě: přepnutí na sousední plochu a zpět bez přesunu původního okna;
+  pokus jít před první plochu ji správně ponechal aktivní.
 - Automaticky zasílané klávesy nástroje pro ovládání aplikací neaktivovaly globální
   Hammerspoon zkratky. Živé automatické testy proto volají stejné akce z profilu;
   nejsou samy o sobě důkazem průchodu fyzické klávesy přes ostatní aplikace.
@@ -104,14 +112,16 @@ lua test-snap-layout.lua
 
 Živé testy lze spustit v konzoli Hammerspoonu pomocí `dofile` s absolutní cestou:
 `validate-live.lua` pro cyklus, `validate-layout-live.lua` pro rozložení a
-`validate-spaces-live.lua` pro přesuny. Poslední dva očekávají testovací dokument
+`validate-spaces-live.lua` pro přesuny. Přepínání ploch samostatně ověřuje
+`validate-navigation-live.lua`. Testy rozložení a přesunů očekávají testovací dokument
 `Codex-window-test-20261015.rtf` v TextEditu; není součástí běžného používání.
 Během testů neklikej do jiných oken. Výsledky se vypisují do konzole.
 
 ## Záloha a vypnutí
 
 Původní konfigurace a exporty nastavení jsou v místní složce `backups/`
-s prefixem `2026-10-15-before-option-shortcuts-`. Je vyloučená z Gitu.
+s prefixem `2026-10-15-before-option-shortcuts-`. Verze přesunu před zrychlením
+je také uložená jako `2026-10-16-before-speed-space-mover.lua`. Složka je vyloučená z Gitu.
 
 Dočasné vypnutí celého profilu v konzoli Hammerspoonu: `linuxControls.stop()`.
 Opětovné zapnutí: `linuxControls.start()` nebo Reload Config.
