@@ -1,0 +1,414 @@
+dale v te slozce krome alt tabu je jeste skript ktery toci okna na jedne plose najdi ho a zjisti zda jde udelat neco podobneho na macu
+
+
+
+
+
+
+
+Thursday 13:48
+
+
+
+
+
+
+Worked for 1m 33s
+
+
+
+Našel jsem ho a ano, podobné přepínání jde udělat i na Macu.
+Je to cosmic-ws-switcher v0.2.0, uložený v [tomto souboru ve složce „tocime okna na plose“ (line 1)](/Users/jirka/Documents/rychlost_linuxu/tocime okna na plose/gemini-code-1791973356050.md:1). Soubor obsahuje instalační skript i celý program v Rustu.
+Dělá přesně toto:
+- Super + → / ← přepne na další nebo předchozí okno.
+- Prochází okna různých aplikací pouze na aktuální ploše.
+- Drží stabilní pořadí: A → B → C → A.
+- Běží trvale na pozadí a pamatuje si zvolený cíl, aby rychlé mačkání nezpůsobovalo přeskakování zpět.
+Na Macu jsou dvě možnosti:
+1. Podobná funkce už je v systému.
+Vyzkoušet můžeš Control + F4, případně Fn + Control + F4. Přesouvá zaměření na další okno; se Shiftem opačným směrem. Apple však nedokládá stejné pevné pořadí a pravidla pro plochy jako tvůj skript. Zkratky Apple, opačný směr.
+2. Věrnou obdobu bych udělal přes Hammerspoon.
+Má podporu filtrování oken podle aktuální plochy, řazení podle vzniku a přímé aktivace konkrétního okna. Lze tedy napsat malý skript se stejnou rotací oběma směry a ochranou při rychlém mačkání. Filtrování a pořadí oken, aktivace okna.
+Hammerspoon potřebuje povolit Zpřístupnění. Dokumentace upozorňuje na možné zdržení při obnovení seznamu po změně plochy; rychlost samotného přepínání bychom museli změřit na tvém Macu. Proveditelnost je ověřená podle rozhraní, funkční macOS verzi jsem zatím netestoval. Nastavení Hammerspoonu, omezení ploch.
+
+
+Thursday 13:50
+
+
+
+
+
+
+
+1. Podobná funkce už je v systému.
+Vyzkoušet můžeš Control + F4, případně Fn + Control + F4. Přesouvá zaměření na další okno; se Shiftem opačným směrem. Apple však nedokládá stejné pevné pořadí a pravidla pro plochy jako tvůj skript. Zkratky Apple, opačný směr.
+na nic je ze to necykluje furt dokola ale zastavi se to nejde s tim neco udelat
+
+
+
+
+
+
+
+Thursday 13:52
+
+
+
+
+
+
+Worked for 5m 7s
+
+
+Ano — vlastní přepínač může cyklovat pořád dokola. Pro samotné Control + F4 jsem nenašel doložené nastavení, které by to vynutilo; příčinu zastavování u tebe zatím nemám ověřenou.
+Připravil jsem [skript pro Hammerspoon](/Users/jirka/Documents/rychlost_linuxu/tocime okna na plose/macos/window-cycle.lua):
+- Control + Option + →: A → B → C → A → B…
+- Control + Option + ←: opačným směrem.
+- Zachovává pořadí i po puštění zkratky a zahrnuje okna na aktuální ploše a monitoru.
+Logika prošla 11 testy, skutečné přepínání na Macu zatím otestované není. Hammerspoon u tebe není nainstalovaný, takže skript ještě neběží. K zapnutí je potřeba Hammerspoon a oprávnění Zpřístupnění; připravil jsem [krátký návod](/Users/jirka/Documents/rychlost_linuxu/tocime okna na plose/macos/README.md).
+
+
+
+
+
+Zastaví se přepínání i tehdy, když držíš Control a opakovaně mačkáš F4 (případně s Fn)?Ano, i při drženém Control
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Takže pouštěním Control to není — zastavuje se i při souvislém přepínání. Přesnou příčinu tím ale ještě neznáme.
+V [připraveném skriptu](/Users/jirka/Documents/rychlost_linuxu/tocime okna na plose/macos/window-cycle.lua) je návrat z posledního okna na první výslovně naprogramovaný a otestovaný. Pro jeho použití zbývá nainstalovat Hammerspoon, povolit Zpřístupnění a ověřit přepínání na tvých oknech.
+
+
+Thursday 13:57
+
+
+
+
+
+
+
+2026-10-15 13:58:44: Welcome to the Hammerspoon Console!
+You can run any Lua code in here.
+2026-10-15 13:58:44: -- Lazy extension loading enabled
+2026-10-15 13:58:44: -- Loading extension: fnutils
+2026-10-15 13:58:44: -- Can't find ~/.hammerspoon/init.lua; create it and reload your config.
+
+
+
+
+
+
+
+Thursday 14:01
+
+
+
+
+
+
+47 previous messages
+
+
+
+Mohu Hammerspoonu povolit Zpřístupnění, aby mohl vybírat a aktivovat okna aplikací? Toto oprávnění mu umožňuje ovládat uživatelské rozhraní Macu.Ano, povol Hammerspoonu Zpřístupnění
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Hotovo, přepínač je zapnutý. Vytvořil jsem konfiguraci a ověřil funkční Zpřístupnění.
+- Control + Option + → přepíná dopředu.
+- Control + Option + ← přepíná zpět.
+Živý test prošel na 13 otevřených oknech v obou směrech, včetně návratu z posledního na první. Pomocné dialogy, které narušovaly pořadí, přepínač vynechává.
+
+
+Thursday 14:10
+
+
+
+
+
+
+
+ok dale bych potreboval predelat mac os aby se ovladal stejne jako ten linux jen super je na macu option, tedy option sipky toci okna option shift rozvrhuje okna do tailingu option control shift presune okno na jinou plochu, mission control je na popos na super w takze tady option w   bude tam hodne kolizi a hodne veci muze uz fungovat diky aplikaci alt tab kterou mam, ale treba kolize na option w me vubec nevai protoze ten symbol vubec nepouzivam, jen me prosim informuj ktere zkratky kolidovaly hodne testuj hodne veci nemusi fungovat protoze mam hodne veci nejak nastavenych 
+
+
+
+
+
+
+
+Thursday 14:15
+
+
+
+
+
+
+Projdu současné zkratky macOS, přepínače oken a Rectangle, nastavím požadované ovládání přes Option a ověřím ho na skutečných oknech. Kolize budu zapisovat, abys měl přehled, co která nová zkratka nahrazuje.
+
+
+
+
+Jak má fungovat Option + Shift + šipky pro rozložení oken? Pokud neupřesníš jinak, použiji levou/pravou polovinu, nahoru maximalizaci a dolů návrat k původní velikosti.
+
+
+
+
+
+Ran commands, searched the web
+
+
+
+Jak má fungovat Option + Shift + šipky pro rozložení oken? Pokud neupřesníš jinak, použiji levou/pravou polovinu, nahoru maximalizaci a dolů návrat k původní velikosti.Stejně jako konkrétní rozložení v mém Pop!_OS
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Ran a command, searched the web
+
+
+
+V COSMIC může Shift + Super + šipka měnit pořadí oken v automatickém dlaždicování, nebo přesouvat volné okno k okraji. Které chování používáš?
+
+
+
+
+
+Po přesunu okna přes Option + Control + Shift + šipku mám přejít s oknem na cílovou plochu?
+
+
+
+
+
+Used Org.hammerspoon.hammerspoon integration, read files, searched the web
+
+
+
+V COSMIC může Shift + Super + šipka měnit pořadí oken v automatickém dlaždicování, nebo přesouvat volné okno k okraji. Které chování používáš?Volná okna: umístit aktivní okno k příslušnému okraji
+
+
+
+
+
+
+
+Po přesunu okna přes Option + Control + Shift + šipku mám přejít s oknem na cílovou plochu?Ano, přejít s oknem
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Read files, ran a command, searched the web
+
+
+
+Budu tedy nastavovat umísťování volných oken k okrajům a přesun na sousední plochu včetně následování okna. Už vidím očekávané kolize s pohybem a výběrem textu přes Option + šipky. Nejsložitější bude přesun mezi plochami: u této verze macOS ho musím ověřit na okně jiné aplikace, protože samotné hlášení „úspěch“ nemusí znamenat skutečný přesun.
+
+
+
+
+Used Org.hammerspoon.hammerspoon, Com.knollsoft.rectangle and Com.lwouis.alt Tab Macos integrations, ran commands, searched the web
+
+
+
+
+You've hit your usage limit. Upgrade your plan or add credits to continue, or try again later.
+
+
+
+
+
+
+
+
+
+
+prosim pokracuj
+
+
+
+
+
+
+
+Thursday 20:04
+
+
+
+
+
+
+Pokračuji. Našel jsem i kolizi v AltTab: při otevřeném přehledu používá W k zavření okna. Upravím ji tak, aby Option + W mělo požadovaný význam, a dokončím zkoušky rozložení a přesunu mezi plochami.
+
+
+
+
+Used Com.lwouis.alt Tab Macos and Com.apple.textedit integrations
+
+
+
+Optimized the conversation
+
+
+
+Pokračuji hlavně ověřením přesunu mezi plochami. Pak dokončím zkratky a vyzkouším je i s Rectangle a AltTab, aby si navzájem nepřebíraly stejné klávesy.
+
+
+
+
+Used Com.apple.textedit, Org.hammerspoon.hammerspoon and Com.apple.dock integrations, read files, ran commands
+
+
+
+Potvrdil se problém macOS: běžný příkaz přesun ohlásí jako úspěšný, ale okno zůstane na původní ploše. Zkouším proto přesun přes Mission Control a ověřuji skutečnou cílovou plochu. Samotné přepínání a rozkládání oken tím omezené není.
+
+
+
+
+Used Org.hammerspoon.hammerspoon and Com.apple.textedit integrations, read files, ran commands, searched the web
+
+
+
+Rozložení udělám podle COSMIC: první šipka dá okno na polovinu, kolmá šipka do rohu a opačná rozšíří zpět. Přesun mezi plochami bude používat viditelný přehled Mission Control, takže bude pomalejší než na Linuxu.
+
+
+
+
+Ran commands
+
+
+
+Přesun už funguje: testovací okno skutečně přešlo na druhou plochu a Mac přešel s ním. Uvolnil jsem také pět kolidujících zkratek v Rectangle. Teď zapínám celý profil s Option a ověřím jednotlivé kombinace.
+
+
+
+
+Used Org.hammerspoon.hammerspoon and Com.apple.textedit integrations, ran commands
+
+
+
+Nové zkratky jsou zapnuté. Můžeš ve svém běžném okně vyzkoušet Option + Shift + ← a Option + W? Automatické ovládání umí ověřit výsledné přesuny, ale jeho stisky zatím globální zkratky nespouštějí; potřebuji odlišit omezení testovacího nástroje od skutečné kolize.
+
+
+
+
+
+Ran command
+
+
+
+
+Nové zkratky jsou zapnuté. Můžeš ve svém běžném okně vyzkoušet Option + Shift + ← a Option + W? Automatické ovládání umí ověřit výsledné přesuny, ale jeho stisky zatím globální zkratky nespouštějí; potřebuji odlišit omezení testovacího nástroje od skutečné kolize.Obě fungují
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Obě zkratky tedy fungují i z fyzické klávesnice; problém byl v automatickém stisku. Ještě dokončím zkoušky rohů, opačných směrů, opakovaného cyklu a návratu okna mezi plochami.
+
+
+
+
+Used Org.hammerspoon.hammerspoon integration, ran commands
+
+
+
+Poloviny, rohy a rozšiřování opačnou šipkou zatím procházejí. Zachytil jsem i pomalé první načtení Hammerspoonu, které přerušilo jeden přesun; upravil jsem jeho načítání a teď ověřuji několik přesunů tam a zpět.
+
+
+
+
+Used Org.hammerspoon.hammerspoon integration, ran commands
+
+
+
+Čtyři přesuny mezi plochami prošly, včetně následování okna a zachování jeho velikosti. Finder má ale větší minimální šířku než půl obrazovky. Opravil jsem rozložení tak, aby takové okno drželo správný okraj a nevyjíždělo mimo obrazovku.
+
+
+
+
+Used Org.hammerspoon.hammerspoon integration, read files, ran commands
+
+
+
+Při závěrečném cyklu se objevila další zvláštnost: Finder někdy aktivuje okno pomaleji než ostatní aplikace. Kontrola to zachytila jako nesprávný fokus; ještě ověřím, zda jde jen o prodlevu, nebo o přeskakování oken.
+
+
+
+
+Used Org.hammerspoon.hammerspoon integration, read files, ran commands
+
+
+
+Celý cyklus už prošel přes všech 17 oken oběma směry, včetně návratu na začátek. Nejdelší naměřená aktivace trvala asi půl sekundy. Ještě tomu přizpůsobím návaznost rychlých stisků, aby pomalejší aplikace cyklus nevracely zpět.
+
+
+
+
+Used Org.hammerspoon.hammerspoon integration, ran commands
+
+
+
+
+You've hit your usage limit. Upgrade your plan or add credits to continue, or try again later.
