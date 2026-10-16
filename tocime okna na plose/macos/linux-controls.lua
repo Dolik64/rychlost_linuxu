@@ -75,7 +75,7 @@ function M.stop()
 end
 function M.start()
     M.stop()
-    mover=dofile(root..'space-mover.lua'); M.mover=mover
+    mover=dofile(root..'fast-space-mover.lua').start({canToggle=function() return not navigationBusy end}); M.mover=mover
     cycle=dofile(root..'window-cycle.lua').start({modifiers={'alt'},enabledWhen=function() return not busy() end}); M.cycle=cycle
     local function previous() if not busy() then return cycle.previous() end end
     local function nextWindow() if not busy() then return cycle.next() end end
