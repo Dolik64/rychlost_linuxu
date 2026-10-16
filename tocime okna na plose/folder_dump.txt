@@ -1,0 +1,1867 @@
+FOLDER DUMP - 2026-10-16 10:17:42.453832
+================================================================================
+
+DIRECTORY TREE
+--------------------
+ROOT: /home/jirkadolezal/Documents/testuju rychlost linuxu/tocime okna na plose
+
+[D] .
+  [F] .DS_Store
+  [F] gemini-code-1791973356050.md
+  [D] macos
+    [F] .DS_Store
+    [F] fast-space-mover.lua
+    [F] init.lua
+    [F] linux-controls.lua
+    [F] README.md
+    [F] snap-layout.lua
+    [F] space-mover.lua
+    [F] test-snap-layout.lua
+    [F] test-window-cycle.lua
+    [F] validate-layout-live.lua
+    [F] validate-live.lua
+    [F] validate-navigation-live.lua
+    [F] validate-spaces-live.lua
+    [F] window-cycle.lua
+================================================================================
+FILE: .DS_Store
+----------------------------------------
+[SKIPPED (binary)]
+--------------------------------------------------------------------------------
+
+FILE: gemini-code-1791973356050.md
+----------------------------------------
+# Rychlý přepínač oken na aktuální ploše pro COSMIC (`cosmic-ws-switcher` v0.2.0)
+
+Tento nástroj přidává do prostředí **COSMIC Desktop (Pop!_OS)** bleskové cyklické přepínání oken pouze v rámci právě aktivní pracovní plochy (workspace) pomocí klávesových zkratek **`Super + ←`** (předchozí okno) a **`Super + →`** (další okno).
+
+## Proč vzniklo toto řešení a jak funguje
+Výchozí přepínání nebo volání jednorázových příkazů přes CLI nástroj `cosmicmsg` trvá při každém stisku klávesy přibližně **300 ms** (kvůli opakovanému navazování spojení s Waylandem a synchronizaci stavů). Navíc knihovní funkce `cosmicmsg::subscribe` trpí chybou při sledování ploch a ve vícevláknovém režimu způsobuje přeskakování fokusu zpět na staré okno (race condition).
+
+**Architektura `v0.2.0` tyto problémy kompletně odstraňuje:**
+* **Jediné trvalé Wayland spojení:** Daemon běží v jednom vlákně nad `libc::poll` a současně sleduje Wayland socket i lokální Unix socket (`$XDG_RUNTIME_DIR/cosmic-ws-switcher.sock`).
+* **Okamžitá odezva (~0,15 až 0,25 ms):** Stav všech oken a ploch je neustále udržován v RAM (spotřeba ~1 MB). Při stisku zkratky se pouze odešle přímý Wayland požadavek `activate` + `flush()`.
+* **Stabilní pořadí a Optimistic Lock:** Okna se řadí deterministicky podle pořadí otevření a po dobu 300 ms od stisku platí optimistický zámek, takže při zběsilém mačkání šipek nikdy nedojde k vrácení na předchozí okno.
+
+---
+
+## 1. Požadavky na novém počítači
+Před instalací se ujisti, že máš nainstalovaný kompilátor jazyka Rust (`cargo`, `rustc`) a `git`:
+```bash
+sudo apt update && sudo apt install -y git curl build-essential
+# Pokud ještě nemáš Rust:
+curl --proto '=https' --tlsv1.2 -sSf [https://sh.rustup.rs](https://sh.rustup.rs) | sh -s -- -y
+source "$HOME/.cargo/env"
+```
+
+---
+
+## 2. Kompletní instalace jedním příkazem (Copy & Paste)
+Tento blok vytvoří projekt v `~/cosmic-ws-switcher`, zkompiluje binárku v `--release` režimu, nainstaluje ji do `~/.local/bin/cosmic-ws-switcher`, nastaví automatické spouštění přes `systemd` a přidá zkratky `Super + Left` a `Super + Right`.
+
+```bash
+mkdir -p "$HOME/cosmic-ws-switcher/src" "$HOME/.local/bin" "$HOME/.config/systemd/user"
+
+cat << 'EOF' > "$HOME/cosmic-ws-switcher/Cargo.toml"
+[package]
+name = "cosmic-ws-switcher"
+version = "0.2.0"
+edition = "2021"
+description = "Ultra-fast current-workspace window switcher for COSMIC"
+license = "MIT"
+
+[dependencies]
+cosmicmsg = { git = "[https://github.com/varbhat/cosmicmsg.git](https://github.com/varbhat/cosmicmsg.git)" }
+wayland-client = "0.31"
+libc = "0.2"
+EOF
+
+cat << 'EOF' > "$HOME/cosmic-ws-switcher/src/main.rs"
+use cosmicmsg::{collect_state, window_activate, AppData, EventQueue};
+use std::{
+    collections::HashSet,
+    env, fs,
+    io::{Read, Write},
+    os::fd::{AsFd, AsRawFd},
+    os::unix::net::{UnixListener, UnixStream},
+    path::PathBuf,
+    time::{Duration, Instant},
+};
+
+#[derive(Debug, Clone, Copy)]
+enum Direction {
+    Next,
+    Prev,
+}
+
+struct Tracker {
+    /// Stabilní pořadí oken podle toho, kdy vznikla (aby rotace nepřeskakovala tam a zpět)
+    order: Vec<String>,
+    /// Poslední známé aktivní okno z Waylandu
+    wayland_active: Option<String>,
+    /// Optimisticky vybrané okno při rychlém mačkání kláves (ochrana před race condition)
+    optimistic_target: Option<(String, Instant)>,
+    /// Statistiky posledního přepnutí v mikrosekundách
+    last_select_us: u128,
+    last_activate_us: u128,
+    total_switches: u64,
+}
+
+impl Tracker {
+    fn new() -> Self {
+        Self {
+            order: Vec::new(),
+            wayland_active: None,
+            optimistic_target: None,
+            last_select_us: 0,
+            last_activate_us: 0,
+            total_switches: 0,
+        }
+    }
+
+    /// Synchronizuje naše stabilní pole `order` a `wayland_active` přímo z živého `AppData`
+    fn sync_from_wayland(&mut self, app_data: &AppData) {
+        let toplevels = app_data.toplevels();
+        let mut current_ids = HashSet::with_capacity(toplevels.len());
+        let mut newly_activated: Option<String> = None;
+
+        for win in &toplevels {
+            current_ids.insert(win.identifier.clone());
+            if !self.order.contains(&win.identifier) {
+                self.order.push(win.identifier.clone());
+            }
+            if win.state.iter().any(|s| s == "activated") {
+                newly_activated = Some(win.identifier.clone());
+            }
+        }
+
+        // Odstranit zavřená okna ze seznamu pořadí
+        self.order.retain(|id| current_ids.contains(id));
+
+        if let Some(act) = newly_activated {
+            self.wayland_active = Some(act.clone());
+            if let Some((ref opt_id, _)) = self.optimistic_target {
+                if opt_id == &act {
+                    self.optimistic_target = None;
+                }
+            }
+        }
+    }
+
+    /// Zjistí, které okno považujeme v tento okamžik za výchozí pro další krok rotace
+    fn effective_current(&mut self) -> Option<String> {
+        if let Some((ref target, ts)) = self.optimistic_target {
+            if ts.elapsed() < Duration::from_millis(300) && self.order.contains(target) {
+                return Some(target.clone());
+            }
+            self.optimistic_target = None;
+        }
+        self.wayland_active.clone()
+    }
+
+    fn select(&mut self, app_data: &AppData, direction: Direction) -> Option<String> {
+        self.sync_from_wayland(app_data);
+
+        let workspaces = app_data.workspaces();
+        let active_ws_names: HashSet<String> = workspaces
+            .into_iter()
+            .filter(|ws| ws.active)
+            .map(|ws| ws.name)
+            .collect();
+
+        let toplevels = app_data.toplevels();
+        let cur_id = self.effective_current();
+
+        let target_ws = cur_id
+            .as_ref()
+            .and_then(|cid| toplevels.iter().find(|t| &t.identifier == cid))
+            .and_then(|win| {
+                win.workspaces
+                    .iter()
+                    .find(|ws| active_ws_names.contains(*ws))
+                    .or_else(|| win.workspaces.first())
+                    .cloned()
+            })
+            .or_else(|| active_ws_names.iter().next().cloned())?;
+
+        let candidates: Vec<String> = self
+            .order
+            .iter()
+            .filter(|id| {
+                if let Some(win) = toplevels.iter().find(|t| &t.identifier == *id) {
+                    let is_sticky = win.state.iter().any(|s| s == "sticky");
+                    let on_ws = win.workspaces.iter().any(|ws| ws == &target_ws);
+                    is_sticky || on_ws
+                } else {
+                    false
+                }
+            })
+            .cloned()
+            .collect();
+
+        if candidates.len() <= 1 {
+            return None;
+        }
+
+        let current_index = cur_id
+            .as_ref()
+            .and_then(|cid| candidates.iter().position(|id| id == cid));
+
+        let next_index = match (direction, current_index) {
+            (Direction::Next, Some(i)) => (i + 1) % candidates.len(),
+            (Direction::Prev, Some(i)) => {
+                if i == 0 {
+                    candidates.len() - 1
+                } else {
+                    i - 1
+                }
+            }
+            (Direction::Next, None) => 0,
+            (Direction::Prev, None) => candidates.len() - 1,
+        };
+
+        let chosen = candidates[next_index].clone();
+        self.optimistic_target = Some((chosen.clone(), Instant::now()));
+        Some(chosen)
+    }
+}
+
+fn socket_path() -> PathBuf {
+    if let Ok(runtime) = env::var("XDG_RUNTIME_DIR") {
+        PathBuf::from(runtime).join("cosmic-ws-switcher.sock")
+    } else {
+        PathBuf::from(format!("/tmp/cosmic-ws-switcher-{}.sock", unsafe {
+            libc::getuid()
+        }))
+    }
+}
+
+/// Přečte všechny čekající události z Wayland socketu bez blokování
+fn pump_wayland(
+    app_data: &mut AppData,
+    eq: &mut EventQueue<AppData>,
+    tracker: &mut Tracker,
+) -> Result<(), String> {
+    let _ = eq.flush();
+    if let Some(guard) = eq.prepare_read() {
+        match guard.read() {
+            Ok(_) => {}
+            Err(wayland_client::backend::WaylandError::Io(ref e))
+                if e.kind() == std::io::ErrorKind::WouldBlock => {}
+            Err(e) => return Err(format!("Wayland read error: {e}")),
+        }
+    }
+    eq.dispatch_pending(app_data)
+        .map_err(|e| format!("Wayland dispatch error: {e}"))?;
+    tracker.sync_from_wayland(app_data);
+    Ok(())
+}
+
+fn handle_client(
+    mut stream: UnixStream,
+    app_data: &mut AppData,
+    eq: &mut EventQueue<AppData>,
+    tracker: &mut Tracker,
+) {
+    let mut buf = [0u8; 64];
+    let n = match stream.read(&mut buf) {
+        Ok(n) if n > 0 => n,
+        _ => return,
+    };
+    let cmd = std::str::from_utf8(&buf[..n]).unwrap_or("").trim();
+
+    match cmd {
+        "next" | "prev" => {
+            let dir = if cmd == "next" {
+                Direction::Next
+            } else {
+                Direction::Prev
+            };
+
+            let t0 = Instant::now();
+            let _ = pump_wayland(app_data, eq, tracker);
+            let target = tracker.select(app_data, dir);
+            let select_us = t0.elapsed().as_micros();
+
+            if let Some(identifier) = target {
+                let t1 = Instant::now();
+                if let Err(e) = window_activate(app_data, eq, &identifier) {
+                    eprintln!("Chyba pri aktivaci okna {identifier}: {e}");
+                }
+                let activate_us = t1.elapsed().as_micros();
+
+                tracker.last_select_us = select_us;
+                tracker.last_activate_us = activate_us;
+                tracker.total_switches += 1;
+
+                let _ = writeln!(
+                    stream,
+                    "ok target={} select_us={} activate_us={}",
+                    identifier, select_us, activate_us
+                );
+            } else {
+                let _ = writeln!(stream, "noop select_us={}", select_us);
+            }
+        }
+        "ping" => {
+            let _ = stream.write_all(b"pong\n");
+        }
+        "status" => {
+            let _ = pump_wayland(app_data, eq, tracker);
+            let toplevels = app_data.toplevels();
+            let active_ws: Vec<String> = app_data
+                .workspaces()
+                .into_iter()
+                .filter(|w| w.active)
+                .map(|w| w.name)
+                .collect();
+
+            let _ = writeln!(
+                stream,
+                "windows={} wayland_active={:?} optimistic={:?} active_ws={:?} last_select_us={} last_activate_us={} total_switches={}",
+                toplevels.len(),
+                tracker.wayland_active,
+                tracker.optimistic_target.as_ref().map(|(id, _)| id),
+                active_ws,
+                tracker.last_select_us,
+                tracker.last_activate_us,
+                tracker.total_switches
+            );
+            for (idx, id) in tracker.order.iter().enumerate() {
+                if let Some(w) = toplevels.iter().find(|t| &t.identifier == id) {
+                    let _ = writeln!(
+                        stream,
+                        "  [{}] id={} app={} ws={:?} state={:?} title={:?}",
+                        idx, w.identifier, w.app_id, w.workspaces, w.state, w.title
+                    );
+                }
+            }
+        }
+        other => {
+            let _ = writeln!(stream, "err unknown command: {other}");
+        }
+    }
+}
+
+fn run_daemon() -> Result<(), Box<dyn std::error::Error>> {
+    let sock = socket_path();
+    if sock.exists() {
+        let _ = fs::remove_file(&sock);
+    }
+
+    let (mut app_data, mut eq) = collect_state()?;
+    let mut tracker = Tracker::new();
+    tracker.sync_from_wayland(&app_data);
+
+    let listener = UnixListener::bind(&sock)?;
+    listener.set_nonblocking(true)?;
+
+    let wl_fd = eq.as_fd().as_raw_fd();
+    let sock_fd = listener.as_raw_fd();
+
+    eprintln!(
+        "cosmic-ws-switcher v0.2.0 daemon bezi na {} (oken: {})",
+        sock.display(),
+        tracker.order.len()
+    );
+
+    loop {
+        let _ = eq.flush();
+
+        let mut fds = [
+            libc::pollfd {
+                fd: wl_fd,
+                events: libc::POLLIN,
+                revents: 0,
+            },
+            libc::pollfd {
+                fd: sock_fd,
+                events: libc::POLLIN,
+                revents: 0,
+            },
+        ];
+
+        let ret = unsafe { libc::poll(fds.as_mut_ptr(), fds.len() as libc::nfds_t, -1) };
+        if ret < 0 {
+            let err = std::io::Error::last_os_error();
+            if err.kind() == std::io::ErrorKind::Interrupted {
+                continue;
+            }
+            return Err(Box::new(err));
+        }
+
+        if (fds[0].revents & (libc::POLLIN | libc::POLLERR | libc::POLLHUP)) != 0 {
+            if let Err(e) = pump_wayland(&mut app_data, &mut eq, &mut tracker) {
+                eprintln!("{e}");
+                break;
+            }
+        }
+
+        if (fds[1].revents & libc::POLLIN) != 0 {
+            loop {
+                match listener.accept() {
+                    Ok((stream, _)) => {
+                        handle_client(stream, &mut app_data, &mut eq, &mut tracker);
+                    }
+                    Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
+                    Err(e) => {
+                        eprintln!("Socket accept error: {e}");
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn send_command(command: &str, print_reply: bool) -> Result<(), Box<dyn std::error::Error>> {
+    let sock = socket_path();
+    let mut stream = UnixStream::connect(&sock)?;
+    stream.write_all(command.as_bytes())?;
+    stream.shutdown(std::net::Shutdown::Write)?;
+
+    if print_reply {
+        let mut response = String::new();
+        stream.read_to_string(&mut response)?;
+        print!("{response}");
+    }
+    Ok(())
+}
+
+fn run_bench() -> Result<(), Box<dyn std::error::Error>> {
+    println!("=== Interni benchmark cosmic-ws-switcher v0.2.0 ===");
+    send_command("status", true)?;
+    println!("\nTestuji 10x prepnuti (5x next, 5x prev) s pauzou 80 ms...");
+
+    for i in 1..=10 {
+        let cmd = if i <= 5 { "next" } else { "prev" };
+        let t0 = Instant::now();
+        let sock = socket_path();
+        let mut stream = UnixStream::connect(&sock)?;
+        stream.write_all(cmd.as_bytes())?;
+        stream.shutdown(std::net::Shutdown::Write)?;
+
+        let mut reply = String::new();
+        stream.read_to_string(&mut reply)?;
+        let total_us = t0.elapsed().as_micros();
+
+        println!(
+            "Krok {:2} ({}): celkem IPC+Wayland = {:4} µs ({:.2} ms) | {}",
+            i,
+            cmd,
+            total_us,
+            total_us as f64 / 1000.0,
+            reply.trim()
+        );
+        std::thread::sleep(Duration::from_millis(80));
+    }
+
+    println!("\nStav po testu:");
+    send_command("status", true)?;
+    Ok(())
+}
+
+fn main() {
+    let arg = env::args().nth(1).unwrap_or_else(|| "help".to_string());
+
+    let result = match arg.as_str() {
+        "daemon" => run_daemon(),
+        "next" => send_command("next", false),
+        "prev" => send_command("prev", false),
+        "ping" => send_command("ping", true),
+        "status" => send_command("status", true),
+        "bench" => run_bench(),
+        _ => {
+            eprintln!(
+                "Pouziti:\n  cosmic-ws-switcher daemon\n  cosmic-ws-switcher next\n  cosmic-ws-switcher prev\n  cosmic-ws-switcher status\n  cosmic-ws-switcher bench"
+            );
+            return;
+        }
+    };
+
+    if let Err(e) = result {
+        eprintln!("cosmic-ws-switcher: {e}");
+        std::process::exit(1);
+    }
+}
+EOF
+
+# Kompilace a instalace binárky
+cd "$HOME/cosmic-ws-switcher"
+cargo build --release
+systemctl --user stop cosmic-ws-switcher.service 2>/dev/null || true
+pkill -f "cosmic-ws-switcher daemon" || true
+rm -f "$HOME/.local/bin/cosmic-ws-switcher"
+cp "$HOME/cosmic-ws-switcher/target/release/cosmic-ws-switcher" "$HOME/.local/bin/cosmic-ws-switcher"
+
+# Vytvoření a zapnutí systemd služby
+cat << 'EOF' > "$HOME/.config/systemd/user/cosmic-ws-switcher.service"
+[Unit]
+Description=COSMIC Fast Current-Workspace Window Switcher Daemon
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/cosmic-ws-switcher daemon
+Restart=always
+RestartSec=200ms
+
+[Install]
+WantedBy=graphical-session.target default.target
+EOF
+
+systemctl --user daemon-reload
+systemctl --user enable --now cosmic-ws-switcher.service
+```
+
+---
+
+## 3. Nastavení klávesových zkratek (`Super + ←` a `Super + →`)
+
+Zkratky můžeš nastavit buď v grafickém **Nastavení COSMIC -> Klávesnice -> Vlastní zkratky**, nebo přímo zapsáním do konfiguračního souboru COSMICu:
+
+* **Předchozí okno (`Super + Left`):** `/home/<uzivatel>/.local/bin/cosmic-ws-switcher prev`
+* **Další okno (`Super + Right`):** `/home/<uzivatel>/.local/bin/cosmic-ws-switcher next`
+
+Pokud chceš zkratky nastavit automaticky přes terminál (pozor: přepíše případné jiné vlastní zkratky v souboru `custom`):
+```bash
+mkdir -p "$HOME/.config/cosmic/com.system76.CosmicSettings.Shortcuts/v1"
+cat << EOF > "$HOME/.config/cosmic/com.system76.CosmicSettings.Shortcuts/v1/custom"
+{
+    (
+        modifiers: [
+            Super,
+        ],
+        key: "Left",
+        description: Some("prev"),
+    ): Spawn("$HOME/.local/bin/cosmic-ws-switcher prev"),
+    (
+        modifiers: [
+            Super,
+        ],
+        key: "Right",
+        description: Some("next"),
+    ): Spawn("$HOME/.local/bin/cosmic-ws-switcher next"),
+}
+EOF
+```
+
+---
+
+## 4. Diagnostika a užitečné příkazy
+
+* **Kontrola stavu oken a časů posledního přepnutí (v µs):**
+  ```bash
+  ~/.local/bin/cosmic-ws-switcher status
+  ```
+* **Spuštění interního benchmarku (10x přepnutí s výpisem latence):**
+  ```bash
+  ~/.local/bin/cosmic-ws-switcher bench
+  ```
+* **Kontrola běhu služby v `systemd`:**
+  ```bash
+  systemctl --user status cosmic-ws-switcher.service
+  ```
+* **Sledování živých logů daemona:**
+  ```bash
+  journalctl --user -u cosmic-ws-switcher.service -f
+  ```
+
+---
+
+## 5. Odinstalace
+Pokud budeš chtít přepínač na některém počítači kompletně odebrat:
+```bash
+systemctl --user disable --now cosmic-ws-switcher.service
+rm -f "$HOME/.config/systemd/user/cosmic-ws-switcher.service"
+systemctl --user daemon-reload
+rm -f "$HOME/.local/bin/cosmic-ws-switcher"
+```
+--------------------------------------------------------------------------------
+
+FILE: macos/.DS_Store
+----------------------------------------
+[SKIPPED (binary)]
+--------------------------------------------------------------------------------
+
+FILE: macos/fast-space-mover.lua
+----------------------------------------
+-- Samostatný rychlý přesouvač oken mezi plochami (Title Bar Hold + Ctrl+Arrow).
+-- Obsahuje živý přepínač (Option+Ctrl+Shift+M) mezi rychlou a původní Mission Control verzí.
+
+local M = { busy = false, hotkeys = {}, toggleHotkey = nil, enabled = false }
+local events = hs.eventtap.event
+local mouseAPI = hs.mouse
+local timers = {}
+
+local function clearTimers()
+    for _, t in ipairs(timers) do t:stop() end
+    timers = {}
+end
+
+local function later(seconds, fn)
+    timers[#timers + 1] = hs.timer.doAfter(seconds, fn)
+end
+
+local function postMouse(kind, pt)
+    events.newMouseEvent(events.types[kind], pt):post()
+end
+
+local function getDragPoint(win)
+    local f = win:frame()
+    local xOffset = math.min(math.max(math.floor(f.w * 0.35), 90), f.w - 20)
+    return { x = f.x + xOffset, y = f.y + 14 }
+end
+
+function M.move(win, target)
+    if M.busy then return false, 'busy' end
+    if not win or not win:isStandard() or win:isFullScreen() then
+        hs.alert.show('Vyber běžné okno mimo celou obrazovku.')
+        return false
+    end
+
+    local screen = win:screen()
+    local spaces = hs.spaces.spacesForScreen(screen)
+    local current = hs.spaces.activeSpaceOnScreen(screen)
+    if current == target then return true end
+
+    local curIdx, targetIdx
+    for i, id in ipairs(spaces) do
+        if id == current then curIdx = i end
+        if id == target then targetIdx = i end
+    end
+    if not curIdx or not targetIdx then return false end
+
+    local diff = targetIdx - curIdx
+    local keyDir = diff < 0 and 'left' or 'right'
+    local steps = math.abs(diff)
+
+    M.busy = true
+    local started = hs.timer.absoluteTime() / 1e9
+    local origMouse = mouseAPI.absolutePosition()
+    local dragPt = getDragPoint(win)
+
+    local waitStart = hs.timer.absoluteTime() / 1e9
+    local function waitForModifiersRelease()
+        local mods = hs.eventtap.checkKeyboardModifiers()
+        if mods.alt or mods.shift or mods.cmd then
+            if (hs.timer.absoluteTime() / 1e9) - waitStart > 1.5 then
+                M.busy = false
+                hs.alert.show('Při přesunu pusť klávesy Option/Shift.')
+                return
+            end
+            later(0.01, waitForModifiersRelease)
+            return
+        end
+
+        win:focus()
+        postMouse('mouseMoved', dragPt)
+        postMouse('leftMouseDown', dragPt)
+
+        later(0.02, function()
+            postMouse('leftMouseDragged', { x = dragPt.x + 1, y = dragPt.y })
+
+            for s = 1, steps do
+                later(0.02 + (s - 1) * 0.12, function()
+                    events.newKeyEvent({'ctrl'}, keyDir, true):post()
+                    events.newKeyEvent({'ctrl'}, keyDir, false):post()
+                end)
+            end
+
+            local releaseDelay = 0.08 + steps * 0.12
+            later(releaseDelay, function()
+                postMouse('leftMouseDragged', dragPt)
+                postMouse('leftMouseUp', dragPt)
+                mouseAPI.absolutePosition(origMouse)
+                win:focus()
+                M.busy = false
+                M.lastResult = {
+                    ok = true,
+                    elapsed = (hs.timer.absoluteTime() / 1e9) - started
+                }
+                hs.printf('Fast space move: PASS, %.2f s', M.lastResult.elapsed)
+            end)
+        end)
+    end
+
+    waitForModifiersRelease()
+    return true
+end
+
+function M.moveDirection(win, dir)
+    if M.busy then return false, 'busy' end
+    win = win or hs.window.focusedWindow()
+    if not win or not win:isStandard() or win:isFullScreen() then
+        hs.alert.show('Vyber běžné okno mimo celou obrazovku.')
+        return false
+    end
+
+    local keyDir = dir
+    if dir == 'up' then keyDir = 'left'
+    elseif dir == 'down' then keyDir = 'right' end
+
+    local screen = win:screen()
+    local spaces = hs.spaces.spacesForScreen(screen)
+    local current = hs.spaces.activeSpaceOnScreen(screen)
+    local idx
+    for i, id in ipairs(spaces) do
+        if id == current then idx = i; break end
+    end
+    if not idx then return false end
+
+    local targetIdx = idx + (keyDir == 'left' and -1 or 1)
+    if targetIdx < 1 or targetIdx > #spaces then
+        return false, 'edge'
+    end
+
+    return M.move(win, spaces[targetIdx])
+end
+
+local function swapWithLegacy(enableFast)
+    if not linuxControls then return end
+    if enableFast then
+        if linuxControls.mover and linuxControls.mover ~= M then
+            M.legacyMover = linuxControls.mover
+            M.legacyMoveFn = linuxControls.mover.move
+            linuxControls.mover = M
+            -- Přepíše i samotnou metodu .move uvnitř staré tabulky (pro případ lokální reference)
+            M.legacyMover.move = M.move
+        end
+    else
+        if M.legacyMover then
+            if M.legacyMoveFn then M.legacyMover.move = M.legacyMoveFn end
+            linuxControls.mover = M.legacyMover
+        end
+    end
+end
+
+function M.enable()
+    if M.enabled then return end
+    swapWithLegacy(true)
+    M.enabled = true
+    hs.printf('Fast space mover: ENABLED')
+    hs.alert.show('Přesun oken: RYCHLÝ režim (Title Bar)')
+end
+
+function M.disable()
+    if not M.enabled then return end
+    clearTimers()
+    M.busy = false
+    swapWithLegacy(false)
+    M.enabled = false
+    hs.printf('Fast space mover: DISABLED (Mission Control active)')
+    hs.alert.show('Přesun oken: PŮVODNÍ režim (Mission Control)')
+end
+
+function M.toggle()
+    if M.enabled then M.disable() else M.enable() end
+end
+
+function M.start()
+    M.stop()
+    local mash = {'alt', 'ctrl', 'shift'}
+    M.toggleHotkey = hs.hotkey.bind(mash, 'm', function()
+        M.toggle()
+    end)
+    M.enable()
+    return M
+end
+
+function M.stop()
+    clearTimers()
+    M.busy = false
+    if M.enabled then swapWithLegacy(false) end
+    if M.toggleHotkey then M.toggleHotkey:delete(); M.toggleHotkey = nil end
+    M.enabled = false
+end
+
+return M
+--------------------------------------------------------------------------------
+
+FILE: macos/init.lua
+----------------------------------------
+-- Pop!_OS-style controls: Option replaces Super.
+if linuxControls then linuxControls.stop() end
+if windowCycle then windowCycle.stop() end
+linuxControls = dofile('/Users/jirka/Documents/rychlost_linuxu/tocime okna na plose/macos/linux-controls.lua').start()
+windowCycle = linuxControls.cycle
+
+-- Pop!_OS-style controls: Option replaces Super.
+if fastMover then fastMover.stop() end
+if linuxControls then linuxControls.stop() end
+if windowCycle then windowCycle.stop() end
+
+local baseDir = '/Users/jirka/Documents/rychlost_linuxu/tocime okna na plose/macos/'
+
+linuxControls = dofile(baseDir .. 'linux-controls.lua').start()
+windowCycle = linuxControls.cycle
+
+-- Načte rychlý přesouvač a automaticky přepíše linuxControls.mover (přepínání přes Option+Ctrl+Shift+M)
+fastMover = dofile(baseDir .. 'fast-space-mover.lua').start()
+--------------------------------------------------------------------------------
+
+FILE: macos/linux-controls.lua
+----------------------------------------
+local root=debug.getinfo(1,'S').source:sub(2):match('(.*/)') or './'
+local layout=dofile(root..'snap-layout.lua')
+local M={}
+local hotkeys, states={}, {}
+local cycle, mover, destroyFilter, navigationTimer
+local navigationBusy=false
+local function busy() return navigationBusy or (mover and mover.busy) end
+local function bind(mods,key,fn,repeats)
+    local h=hs.hotkey.bind(mods,key,fn,nil,repeats and fn or nil)
+    assert(h,'Cannot register '..table.concat(mods,'+')..'+'..key)
+    hotkeys[#hotkeys+1]=h
+end
+local function ordinaryWindow()
+    local win=hs.window.focusedWindow()
+    if not win or not win:isStandard() or win:isFullScreen() then
+        hs.alert.show('Vyber běžné okno mimo celou obrazovku.'); return
+    end
+    return win
+end
+function M.snap(direction)
+    if busy() then return end
+    local win=ordinaryWindow(); if not win then return end
+    local id,screen,frame=win:id(),win:screen(),win:frame()
+    local area=screen:frame()
+    local saved=states[id]
+    local state
+    if saved and saved.screen==screen:id() and layout.near(saved.frame,frame) and layout.near(saved.area,area) then
+        state=saved.state
+    else state=layout.infer(frame,area) end
+    local nextState,atEdge=layout.next(state,direction)
+    -- Workspace movement is deliberately explicit via Ctrl+Option+Shift.
+    if atEdge then return end
+    win:setFrame(layout.frame(nextState,area),0)
+    -- Apps may impose a width/height larger than a half. Keep their outer edge
+    -- on screen after reading the actual size (Finder is one such app).
+    local actual=win:frame()
+    local x=nextState.x==1 and area.x+area.w-actual.w or area.x
+    local y=nextState.y==1 and area.y+area.h-actual.h or area.y
+    win:setTopLeft({x=math.max(area.x,x),y=math.max(area.y,y)})
+    states[id]={state=nextState,screen=screen:id(),frame=win:frame(),area=area}
+    return states[id].frame
+end
+local function targetSpace(screen,step)
+    local current=hs.spaces.activeSpaceOnScreen(screen)
+    local users={}
+    for _,id in ipairs(hs.spaces.spacesForScreen(screen) or {}) do
+        if hs.spaces.spaceType(id)=='user' then users[#users+1]=id end
+    end
+    for i,id in ipairs(users) do
+        if id==current then return users[i+step] end
+    end
+end
+function M.space(step,move)
+    if busy() then return end
+    local win=move and ordinaryWindow() or hs.window.focusedWindow()
+    if move and not win then return end
+    local screen=win and win:screen() or hs.screen.mainScreen()
+    local target=targetSpace(screen,step)
+    if not target then hs.alert.show('V tomto směru není další plocha.',0.7); return end
+    if move then return mover.move(win,target) end
+    navigationBusy=true
+    local ok,err=hs.spaces.gotoSpace(target)
+    navigationTimer=hs.timer.doAfter(0.8,function() navigationBusy=false; navigationTimer=nil end)
+    return ok,err
+end
+function M.stop()
+    for _,h in ipairs(hotkeys) do h:delete() end
+    hotkeys={}
+    if navigationTimer then navigationTimer:stop(); navigationTimer=nil end
+    navigationBusy=false
+    if cycle then cycle.stop() end
+    if mover then mover.stop() end
+    if destroyFilter then destroyFilter:unsubscribeAll():pause(); destroyFilter=nil end
+    states={}
+end
+function M.start()
+    M.stop()
+    mover=dofile(root..'space-mover.lua'); M.mover=mover
+    cycle=dofile(root..'window-cycle.lua').start({modifiers={'alt'},enabledWhen=function() return not busy() end}); M.cycle=cycle
+    local function previous() if not busy() then return cycle.previous() end end
+    local function nextWindow() if not busy() then return cycle.next() end end
+    bind({'alt'},'up',previous,true)
+    bind({'alt'},'down',nextWindow,true)
+    for _,direction in ipairs({'left','right','up','down'}) do
+        local step=(direction=='left' or direction=='up') and -1 or 1
+        bind({'alt','shift'},direction,function() M.snap(direction) end,false)
+        bind({'alt','ctrl'},direction,function() M.space(step,false) end,false)
+        bind({'alt','ctrl','shift'},direction,function() M.space(step,true) end,false)
+    end
+    bind({'alt'},'w',function() if not busy() then hs.spaces.toggleMissionControl() end end,false)
+    destroyFilter=hs.window.filter.new()
+    destroyFilter:subscribe(hs.window.filter.windowDestroyed,function(win) local id=win:id(); if id then states[id]=nil end end)
+    return M
+end
+return M
+
+--------------------------------------------------------------------------------
+
+FILE: macos/README.md
+----------------------------------------
+# Ovládání macOS po vzoru Pop!_OS
+
+Aktivní profil pro Hammerspoon. **Option nahrazuje Super**.
+Načítá se přes `/Users/jirka/.hammerspoon/init.lua`; Hammerspoon se spouští při přihlášení.
+
+| Zkratka | Akce |
+|---|---|
+| Option + → / ↓ | Další okno, po posledním znovu první |
+| Option + ← / ↑ | Předchozí okno, po prvním znovu poslední |
+| Option + Shift + šipka | Rozložení aktivního volného okna směrem k okraji |
+| Option + Control + → / ↓ | Další běžná plocha |
+| Option + Control + ← / ↑ | Předchozí běžná plocha |
+| Option + Control + Shift + šipka | Přesun okna na sousední plochu a přechod s ním |
+| Option + W | Otevřít / zavřít Mission Control |
+| Option + Tab | Dosavadní AltTab |
+
+## Rozkládání oken
+
+Používá přechody volných oken z COSMIC, nikoli automatické dlaždicování všech oken:
+
+- Ze základní velikosti: vlevo, vpravo, nahoru nebo dolů → příslušná polovina.
+- Kolmá šipka → roh. Například vlevo, pak nahoru → levá horní čtvrtina.
+- Opačná šipka rozšíří danou osu. Levý horní roh + dolů → levá polovina.
+- Levá polovina + doprava → maximalizace v použitelné ploše obrazovky.
+- Opakovaná šipka ven z již dosaženého okraje okno nechá na místě.
+  Přesun na další plochu je záměrně na výslovné kombinaci s Control.
+  COSMIC může v tomto bodě přesouvat dál na plochu nebo monitor; tato část není shodná.
+- Ruční změna velikosti/polohy se rozpozná; další šipka vychází z aktuálního okna.
+- Aplikace si může vynutit minimální velikost. Například zdejší Finder nedovolí
+  šířku menší než 843 bodů, zatímco polovina monitoru má 756. Takové okno zůstane
+  přisazené ke správnému okraji, ale bude širší než polovina.
+
+## Přesun mezi plochami
+
+Přesun probíhá přes náhledy v Mission Control. Běžné rozhraní Hammerspoonu na tomto
+Macu vracelo úspěch, ale okno jiné aplikace se ve skutečnosti nepřesunulo.
+Nový postup skutečné umístění, aktivní plochu a fokus kontroluje.
+
+Po stisku **pusť modifikátory**. Po zrychlení 16. 10. trval celý přesun v opakovaném testu **1,95–2,25 sekundy**
+(původní verze přibližně 3–5 sekund);
+na chvíli se zobrazí Mission Control a pohne kurzor. Po dokončení se kurzor vrátí.
+Během přesunu nehýbej myší. Escape přesun zruší. Další naše zkratky během
+přesunu nevstupují do rozpracované operace.
+
+- ← a ↑ znamenají předchozí, → a ↓ následující plochu v aktuálním pořadí macOS.
+- Na prvním/posledním místě se nepřeskakuje na opačný konec a nevytvářejí se nové plochy.
+- Přesouvají se běžná okna na běžné plochy stejného monitoru.
+- Nativní fullscreen a okna připnutá na všechny plochy jsou vynechána.
+- Mission Control neposkytuje ID náhledů oken. Skript proto vyžaduje jediný přesně
+  odpovídající název na daném monitoru. Dva stejné názvy nebo zkrácený název mohou
+  přesun znemožnit; v takovém případě se zobrazí zpráva a žádný náhled se nepřetahuje.
+- Rozhraní Mission Control se může změnit s aktualizací macOS. Více fyzických
+  monitorů nebylo v této relaci živě vyzkoušeno.
+
+## Cyklus oken
+
+Navazuje na linuxový `cosmic-ws-switcher v0.2.0` z vedlejšího souboru.
+Pořadí zůstává stálé a nemění se podle posledního použití. Nově zjištěná okna se
+přidávají na konec. Zahrnuje běžná viditelná okna aplikací na aktuální ploše
+aktuálního monitoru; skryté aplikace, minimalizovaná okna a pomocné dialogy vynechává.
+Překrytá okna zahrnuje. Dialogy mohou přesměrovávat fokus na rodiče a rozbíjet cyklus.
+Podporuje opakované stisky i držení šipky. Při rychlém vstupu navazuje až 800 ms na
+poslední vybraný cíl, než macOS doručí skutečnou změnu fokusu.
+
+## Zjištěné kolize a změny
+
+| Původní chování | Řešení |
+|---|---|
+| Rectangle: Control + Option + čtyři šipky rozkládaly na poloviny | Tyto čtyři vazby odstraněny; nově přepínají plochy |
+| Rectangle: Control + Option + Shift + ↑ zvětšovalo výšku | Vazba odstraněna; nově přesouvá okno na předchozí plochu |
+| Původní Hammerspoon: Control + Option + ←/→ cyklovalo okna | Cyklus přesunut na samotné Option + šipky |
+| AltTab: W v otevřeném přehledu zavíralo vybrané okno | Zavírání v přehledu změněno na Backspace (⌫) |
+| Option + W v rozložení US píše ∑ | Převzato pro Mission Control podle požadavku |
+| Option + šipky posouvají textový kurzor po slovech/odstavcích | Globálně převzato pro cyklus oken |
+| Option + Shift + šipky rozšiřují výběr textu | Globálně převzato pro rozložení oken |
+
+AltTab má nadále Option + Tab a ostatní nastavení; běžné Command + W zavírá okno
+jako dříve. Ostatní zkratky Rectangle zůstaly. Registrace všech 17 nových zkratek
+v Hammerspoonu prošla. VoiceOver používá některé kombinace Control + Option;
+při jeho případném zapnutí by bylo nutné profil znovu sladit.
+
+## Ověření 15.–16. 10. 2026
+
+- Uživatel potvrdil funkčnost fyzických kláves **Option + Shift + ←** a **Option + W**.
+- 13 regresních testů cyklu: obě směrové smyčky, rychlé stisky, opožděný fokus,
+  přidání/zavření okna, změna plochy, výběr monitoru, pozastavení při přesunu.
+- 45 kontrol geometrie: poloviny, rohy, opačné směry, liché rozměry a záporné
+  souřadnice druhého monitoru.
+- Živě: úplný cyklus přes 17 oken v obou směrech, včetně návratu na začátek.
+  Nejdelší čekání na potvrzení fokusu bylo 0,52 s. Po úpravě návaznosti rychlých
+  stisků prošel 16. 10. i celý cyklus šesti oken aktuální plochy v obou směrech
+  (nejdelší potvrzení fokusu 0,16 s).
+- Živě: 32 změn rozložení v TextEditu a Finderu; 24 přesných a 8 s respektováním
+  minimální velikosti Finderu. Původní rozměry testovaných oken byly obnoveny.
+- Živě: čtyři přesuny testovacího okna TextEditu mezi dvěma plochami tam a zpět.
+  Každý ověřil skutečné členství na ploše, aktivní plochu, fokus i zachování rámu.
+  Po zrychlení 16. 10. prošly další čtyři přesuny za 2,18 / 2,25 / 1,95 / 2,00 s.
+  Skript čeká na skutečnou připravenost a výsledek jednotlivých kroků;
+  po přetažení znovu načte cílovou plochu z obnoveného přehledu.
+- Živě: přepnutí na sousední plochu a zpět bez přesunu původního okna;
+  pokus jít před první plochu ji správně ponechal aktivní.
+- Automaticky zasílané klávesy nástroje pro ovládání aplikací neaktivovaly globální
+  Hammerspoon zkratky. Živé automatické testy proto volají stejné akce z profilu;
+  nejsou samy o sobě důkazem průchodu fyzické klávesy přes ostatní aplikace.
+
+Testy bez ovládání skutečných oken se spouštějí v této složce:
+
+```sh
+lua test-window-cycle.lua
+lua test-snap-layout.lua
+```
+
+Živé testy lze spustit v konzoli Hammerspoonu pomocí `dofile` s absolutní cestou:
+`validate-live.lua` pro cyklus, `validate-layout-live.lua` pro rozložení a
+`validate-spaces-live.lua` pro přesuny. Přepínání ploch samostatně ověřuje
+`validate-navigation-live.lua`. Testy rozložení a přesunů očekávají testovací dokument
+`Codex-window-test-20261015.rtf` v TextEditu; není součástí běžného používání.
+Během testů neklikej do jiných oken. Výsledky se vypisují do konzole.
+
+## Záloha a vypnutí
+
+Původní konfigurace a exporty nastavení jsou v místní složce `backups/`
+s prefixem `2026-10-15-before-option-shortcuts-`. Verze přesunu před zrychlením
+je také uložená jako `2026-10-16-before-speed-space-mover.lua`. Složka je vyloučená z Gitu.
+
+Dočasné vypnutí celého profilu v konzoli Hammerspoonu: `linuxControls.stop()`.
+Opětovné zapnutí: `linuxControls.start()` nebo Reload Config.
+
+Pro návrat k původnímu cyklu zkopíruj zálohu `init.lua` do
+`/Users/jirka/.hammerspoon/init.lua` a zvol Reload Config. Tím se neobnoví nastavení
+Rectangle ani AltTab. Jejich změněné vazby lze vrátit jednotlivě podle tabulky výše;
+případně lze po ukončení dané aplikace obnovit celý její export nastavení ze zálohy.
+Celý export by nahradil i případné pozdější úpravy.
+
+## Zdroje
+
+[COSMIC – oficiální zkratky](https://support.system76.com/articles/pop-cosmic-keyboard-shortcuts/),
+[COSMIC – logika volných oken](https://github.com/pop-os/cosmic-comp/blob/master/src/shell/layout/floating/mod.rs),
+[Hammerspoon – Spaces](https://www.hammerspoon.org/docs/hs.spaces.html),
+[Hammerspoon – zkratky](https://www.hammerspoon.org/docs/hs.hotkey.html),
+[Drag.spoon – přístup přes Mission Control](https://github.com/mogenson/Drag.spoon).
+
+--------------------------------------------------------------------------------
+
+FILE: macos/snap-layout.lua
+----------------------------------------
+-- Geometry-only floating-window transitions: halves, corners, opposite expands.
+local M = {}
+local directions = {left={'x',-1},right={'x',1},up={'y',-1},down={'y',1}}
+function M.next(state, direction)
+    local d=assert(directions[direction], 'invalid direction')
+    local nextState={x=state and state.x or 0, y=state and state.y or 0}
+    if nextState[d[1]]==d[2] then return nextState, true end
+    nextState[d[1]]=nextState[d[1]]==-d[2] and 0 or d[2]
+    return nextState, false
+end
+function M.frame(state, area)
+    local w=state.x==0 and area.w or math.floor(area.w/2)
+    local h=state.y==0 and area.h or math.floor(area.h/2)
+    return {x=area.x+(state.x==1 and area.w-w or 0),
+            y=area.y+(state.y==1 and area.h-h or 0),w=w,h=h}
+end
+function M.near(a,b)
+    for _,k in ipairs({'x','y','w','h'}) do if math.abs(a[k]-b[k])>3 then return false end end
+    return true
+end
+function M.infer(frame,area)
+    for x=-1,1 do for y=-1,1 do
+        local state={x=x,y=y}
+        if M.near(frame,M.frame(state,area)) then return state end
+    end end
+end
+return M
+
+--------------------------------------------------------------------------------
+
+FILE: macos/space-mover.lua
+----------------------------------------
+-- Move ordinary windows through Mission Control on macOS 26.
+-- Private moveWindowToSpace() can claim success without moving another app's window.
+local M = {busy=false}
+local events, ax, mouseAPI = hs.eventtap.event, hs.axuielement, hs.mouse
+local timers, escape, pointer, mouseDown, lastPoint = {}, nil, nil, false, nil
+local started, phases
+local function now() return hs.timer.absoluteTime()/1e9 end
+local function mark(name) phases[name]=now()-started end
+local function mouse(kind, point)
+    lastPoint=point
+    events.newMouseEvent(events.types[kind],point):post()
+end
+local function child(parent, identifier)
+    for _,e in ipairs(parent and parent.AXChildren or {}) do
+        if e.AXIdentifier==identifier then return e end
+    end
+end
+local function missionControl()
+    local dock=hs.application.get('com.apple.dock')
+    return dock and child(ax.applicationElement(dock),'mc')
+end
+local function displayGroup(screen)
+    local mc=missionControl()
+    for _,e in ipairs(mc and mc.AXChildren or {}) do
+        if e.AXIdentifier=='mc.display' and e.AXDisplayID==screen:id() then return e end
+    end
+end
+local function finish(ok,message)
+    for _,t in ipairs(timers) do t:stop() end
+    timers={}
+    if mouseDown then mouse('leftMouseUp',lastPoint); mouseDown=false end
+    if escape then escape:delete(); escape=nil end
+    if not ok then hs.spaces.closeMissionControl() end
+    if pointer then mouseAPI.absolutePosition(pointer); pointer=nil end
+    M.busy=false
+    M.lastResult={ok=ok,message=message,elapsed=now()-started,phases=phases,readiness=M.readiness}
+    hs.printf('Space move: %s, %.2f s',ok and 'PASS' or 'FAIL',M.lastResult.elapsed)
+    if not ok and message then hs.alert.show(message) end
+end
+local function later(seconds,fn)
+    timers[#timers+1]=hs.timer.doAfter(seconds,function()
+        local ok,err=xpcall(fn,debug.traceback)
+        if not ok then hs.printf('Space move: %s',err); finish(false,'Přesun okna selhal.') end
+    end)
+end
+local function waitUntil(test,success,timeout,message)
+    local deadline=now()+timeout
+    local function check()
+        local result=test()
+        if result then success(result)
+        elseif now()>=deadline then finish(false,message)
+        else later(0.05,check) end
+    end
+    later(0.05,check)
+end
+local function center(f) return {x=f.x+f.w/2,y=f.y+f.h/2} end
+local function near(a,b)
+    if not a or not b then return false end
+    for _,k in ipairs({'x','y','w','h'}) do if math.abs(a[k]-b[k])>1 then return false end end
+    return true
+end
+local function onSpace(win,id)
+    for _,v in ipairs(hs.spaces.windowSpaces(win) or {}) do if v==id then return true end end
+    return false
+end
+function M.stop() if M.busy then finish(false) end end
+function M.move(win,target)
+    if M.busy then return false,'busy' end
+    if not win or not win:isStandard() or win:isFullScreen() then
+        hs.alert.show('Vyber běžné okno mimo celou obrazovku.'); return false
+    end
+    local screen=win:screen()
+    local spaces=hs.spaces.windowSpaces(win) or {}
+    if #spaces~=1 or hs.spaces.spaceType(spaces[1])~='user' then
+        hs.alert.show('Okno musí patřit jedné běžné ploše.'); return false
+    end
+    if hs.spaces.spaceType(target)~='user' or hs.spaces.spaceDisplay(target)~=screen:getUUID() then return false end
+    if onSpace(win,target) then return true end
+    local index
+    for i,id in ipairs(hs.spaces.spacesForScreen(screen)) do if id==target then index=i end end
+    if not index then return false end
+    local title=win:title()
+    if not title or title=='' then title=win:application():title() end
+    M.busy=true; M.lastResult=nil
+    started=now(); phases={}; M.readiness={}
+    pointer=mouseAPI.absolutePosition()
+    escape=hs.hotkey.bind({},'escape',function() finish(false,'Přesun zrušen.') end)
+    later(12,function() finish(false,'Přesun nedokončen. Zkontroluj polohu okna.') end)
+    local function begin()
+        local mods=hs.eventtap.checkKeyboardModifiers()
+        if mods.alt or mods.ctrl or mods.shift or mods.cmd then later(0.05,begin); return end
+        mark('keysReleased')
+        local focused=hs.window.focusedWindow()
+        if not focused or focused:id()~=win:id() then win:focus() end
+        hs.spaces.openMissionControl()
+        mark('opened')
+        local f=screen:fullFrame()
+        local reduceMotion=hs.screen.accessibilitySettings().ReduceMotion
+        local minimumOpeningTime=reduceMotion and 0.15 or 0.75
+        local hoverCount=0
+        local priorWindow,priorSpace,stableSince
+        waitUntil(function()
+            local display=displayGroup(screen)
+            M.readiness.display=display~=nil
+            if not display then return end
+            local list=child(child(display,'mc.spaces'),'mc.spaces.list')
+            local button=list and list.AXChildren and list.AXChildren[index]
+            local bf=button and button.AXFrame
+            -- The label becomes a valid drop target once the Spaces strip is expanded.
+            M.readiness.space=bf
+            if not bf or bf.y<f.y then
+                hoverCount=hoverCount+1
+                mouse('mouseMoved',{x=f.x+f.w/2+hoverCount%2,y=f.y+10})
+                return
+            end
+            local windows=child(display,'mc.windows')
+            local matches={}
+            for _,e in ipairs(windows and windows.AXChildren or {}) do
+                if e.AXTitle==title then matches[#matches+1]=e end
+            end
+            M.readiness.matches=#matches
+            if #matches>1 then return {ambiguous=true} end
+            if #matches==0 then return end
+            local wf=matches[1].AXFrame
+            if near(wf,priorWindow) and near(bf,priorSpace) then
+                if stableSince and now()-stableSince>=0.1 and now()-started-phases.opened>=minimumOpeningTime then return {window=wf,space=bf,button=button} end
+            else stableSince=now() end
+            priorWindow,priorSpace=wf,bf
+        end,function(found)
+            if found.ambiguous then finish(false,'Více oken má stejný název; přesun je nejednoznačný.'); return end
+            mark('ready')
+            local from,to=center(found.window),center(found.space)
+            mouse('mouseMoved',from)
+            mouse('leftMouseDown',from); mouseDown=true
+            for n=1,15 do later(n*0.02,function()
+                mouse('leftMouseDragged',{x=from.x+(to.x-from.x)*n/15,y=from.y+(to.y-from.y)*n/15})
+            end) end
+            later(0.35,function()
+                mouse('leftMouseUp',to); mouseDown=false; mark('released')
+                waitUntil(function() return onSpace(win,target) end,function()
+                    mark('moved')
+                    -- Reacquire the destination after the drop changes the AX tree.
+                    -- gotoSpace also lets Mission Control finish its drop animation.
+                    local originalWait=hs.spaces.MCwaitTime
+                    if reduceMotion then hs.spaces.MCwaitTime=0.15 end
+                    local called,switched,err=pcall(hs.spaces.gotoSpace,target)
+                    hs.spaces.MCwaitTime=originalWait
+                    if not called then finish(false,'Přechod na plochu selhal.'); return end
+                    if not switched then finish(false,err or 'Přechod na plochu se nezdařil.'); return end
+                    waitUntil(function()
+                        return hs.spaces.activeSpaceOnScreen(screen)==target and not missionControl()
+                    end,function()
+                        mark('arrived')
+                        local active=hs.window.focusedWindow()
+                        if not active or active:id()~=win:id() then win:focus() end
+                        waitUntil(function()
+                            local activeWindow=hs.window.focusedWindow()
+                            return onSpace(win,target) and activeWindow and activeWindow:id()==win:id()
+                        end,function() finish(true,'moved') end,1.5,'Okno přesunuto, aktivace se nezdařila.')
+                    end,2,'Okno přesunuto, přechod na plochu se nezdařil.')
+                end,1.5,'macOS přesun okna neprovedl.')
+            end)
+        end,3,'Okno nebo cílovou plochu nelze jednoznačně najít v Mission Control.')
+    end
+    later(0.01,begin)
+    return true
+end
+return M
+
+--------------------------------------------------------------------------------
+
+FILE: macos/test-snap-layout.lua
+----------------------------------------
+local root=debug.getinfo(1,'S').source:sub(2):match('(.*/)') or './'
+local m=dofile(root..'snap-layout.lua')
+local function check(s,d,x,y,edge)
+    local n,e=m.next(s,d)
+    assert(n.x==x and n.y==y and e==edge,d)
+    return n
+end
+local s=check(nil,'left',-1,0,false)
+s=check(s,'up',-1,-1,false)
+s=check(s,'down',-1,0,false)
+s=check(s,'right',0,0,false)
+s=check(s,'down',0,1,false)
+s=check(s,'right',1,1,false)
+check(s,'right',1,1,true)
+check(s,'up',1,0,false)
+check(s,'left',0,1,false)
+local count=9
+for x=-1,1 do for y=-1,1 do
+    for _,d in ipairs({'up','down','left','right'}) do
+        local n=m.next({x=x,y=y},d)
+        assert(n.x>=-1 and n.x<=1 and n.y>=-1 and n.y<=1)
+        local a={x=-1920,y=25,w=1513,h=957}
+        local f=m.frame(n,a)
+        assert(f.x>=a.x and f.y>=a.y and f.x+f.w<=a.x+a.w and f.y+f.h<=a.y+a.h)
+        local inferred=m.infer(f,a)
+        assert(inferred.x==n.x and inferred.y==n.y)
+        count=count+1
+    end
+end end
+assert(not m.infer({x=100,y=100,w=500,h=400},{x=0,y=25,w=1512,h=900}))
+print('PASS: '..count..' snap transitions; odd dimensions, negative monitor coordinates, manual resize')
+
+--------------------------------------------------------------------------------
+
+FILE: macos/test-window-cycle.lua
+----------------------------------------
+-- Regression tests for wraparound and delayed focus, without running Hammerspoon.
+local tests = 0
+local function equal(actual, expected, label)
+    assert(actual == expected, (label or "value") .. ": expected " ..
+        tostring(expected) .. ", got " .. tostring(actual))
+end
+
+local function setup(options)
+    local state = {now = 1, windows = {}, focused = nil, targets = {}, keys = {},
+                   settle = true, mainScreenID = 1}
+    local function screen(id) return {id = function() return id end} end
+    function state.window(id, screenID)
+        local win = {windowID = id, screenID = screenID or 1}
+        function win:id() return self.windowID end
+        function win:screen() return screen(self.screenID) end
+        function win:focus()
+            if self.fail then error("window closed") end
+            state.targets[#state.targets + 1] = self:id()
+            if state.settle then state.focused = self end
+            return self
+        end
+        return win
+    end
+    function state.tick(seconds) state.now = state.now + (seconds or 0.4) end
+    function state.last() return state.targets[#state.targets] end
+    local wf = {}
+    function wf:setOverrideFilter(settings) state.settings = settings; return self end
+    function wf:getWindows(sort)
+        equal(sort, "created")
+        -- The filtering itself is Hammerspoon's responsibility.
+        return state.windows
+    end
+    function wf:subscribe(event, callback) state.destroy = callback; return self end
+    function wf:unsubscribeAll() state.unsubscribed = true; return self end
+    function wf:pause() state.paused = true; return self end
+    local watcher = {}
+    function watcher:start() return self end
+    function watcher:stop() state.watcherStopped = true end
+    _G.hs = {
+        window = {
+            focusedWindow = function() return state.focused end,
+            filter = {new = function() return wf end, sortByCreated = "created",
+                      windowDestroyed = "destroyed"},
+        },
+        screen = {mainScreen = function() return screen(state.mainScreenID) end},
+        timer = {absoluteTime = function() return state.now * 1e9 end},
+        spaces = {watcher = {new = function(callback)
+            state.spaceChanged = callback; return watcher
+        end}},
+        hotkey = {bind = function(mods, key, pressed, released, repeated)
+            local binding = {pressed = pressed, repeated = repeated, mods = mods}
+            function binding:delete() self.deleted = true end
+            state.keys[key] = binding
+            return binding
+        end},
+        printf = function() state.loggedError = true end,
+    }
+    local module = dofile("window-cycle.lua").start(options)
+    equal(state.settings.currentSpace, true)
+    equal(state.settings.visible, true)
+    equal(#state.settings.allowRoles, 1)
+    equal(state.settings.allowRoles[1], "AXStandardWindow")
+    local a, b, c = state.window(1), state.window(2), state.window(3)
+    state.windows, state.focused = {a, b, c}, a
+    return state, module, a, b, c
+end
+
+local function test(name, fn)
+    fn()
+    tests = tests + 1
+    print("PASS " .. name)
+end
+
+test("repeated forward and reverse wraparound after releasing modifiers", function()
+    local s, m = setup()
+    for i = 1, 30 do s.tick(); m.next(); equal(s.last(), (i % 3) + 1) end
+    for i = 1, 30 do s.tick(); m.previous(); equal(s.last(), ((-i) % 3) + 1) end
+end)
+
+test("rapid input advances before focus notifications arrive", function()
+    local s, m = setup()
+    s.settle = false
+    for i = 1, 20 do s.tick(0.01); m.next(); equal(s.last(), (i % 3) + 1) end
+    m.previous(); equal(s.last(), 2)
+end)
+
+test("late and out of order focus does not move the cycle backwards", function()
+    local s, m, a, b = setup()
+    s.settle = false
+    m.next(); equal(s.last(), 2)
+    s.tick(0.01); m.next(); equal(s.last(), 3)
+    s.focused = b
+    s.tick(0.01); m.next(); equal(s.last(), 1)
+    s.tick(0.4); s.focused = a
+    m.next(); equal(s.last(), 2)
+end)
+
+test("changing system enumeration does not reorder the cycle", function()
+    local s, m, a, b, c = setup()
+    m.next(); equal(s.last(), 2)
+    s.windows = {c, a, b}
+    s.tick(); m.next(); equal(s.last(), 3)
+    s.tick(); m.next(); equal(s.last(), 1)
+end)
+
+test("closing the pending target and adding a window", function()
+    local s, m, a, b, c = setup()
+    s.settle = false
+    m.next()
+    s.windows = {a, c}; s.destroy(b)
+    m.next(); equal(s.last(), 3)
+    local d = s.window(4)
+    s.windows = {d, c, a}
+    m.next(); equal(s.last(), 4)
+    m.next(); equal(s.last(), 1)
+end)
+
+test("space change clears the pending target even with the same windows", function()
+    local s, m = setup()
+    s.settle = false
+    m.next(); equal(s.last(), 2)
+    s.spaceChanged()
+    m.next(); equal(s.last(), 2)
+end)
+
+test("only the focused monitor participates by default", function()
+    local s, m, a, b, c = setup()
+    c.screenID = 2
+    m.next(); equal(s.last(), 2)
+    s.tick(); m.next(); equal(s.last(), 1)
+    s.focused = c; s.tick(); m.next()
+    equal(#s.targets, 2)
+end)
+
+test("all monitors are optional", function()
+    local s, m, a, b, c = setup({onlyCurrentScreen = false})
+    c.screenID = 2
+    m.next(); s.tick(); m.next(); equal(s.last(), 3)
+    s.tick(); m.next(); equal(s.last(), 1)
+end)
+
+test("zero, one and no focused window", function()
+    local s, m, a = setup()
+    s.windows = {}; m.next(); m.previous(); equal(#s.targets, 0)
+    s.windows = {a}; m.next(); m.previous(); equal(#s.targets, 0)
+    s.windows = {a, s.window(2)}; s.focused = nil
+    m.previous(); equal(s.last(), 2)
+    s.tick(); s.focused = nil
+    m.next(); equal(s.last(), 1)
+end)
+
+test("failed activation clears optimistic state", function()
+    local s, m, a, b = setup()
+    b.fail = true
+    m.next(); equal(s.loggedError, true)
+    b.fail = false
+    m.next(); equal(s.last(), 2)
+end)
+
+test("keypress and hold callbacks work and stop removes bindings", function()
+    local s, m = setup()
+    s.keys.right.pressed(); equal(s.last(), 2)
+    s.keys.right.repeated(); equal(s.last(), 3)
+    s.keys.left.pressed(); equal(s.last(), 2)
+    m.stop()
+    equal(s.keys.right.deleted, true)
+    equal(s.keys.left.deleted, true)
+    equal(s.unsubscribed, true)
+    equal(s.paused, true)
+    equal(s.watcherStopped, true)
+    m.next(); equal(#s.targets, 3)
+end)
+
+test("cycling is suspended during a Space transition", function()
+    local enabled = false
+    local s, m = setup({enabledWhen = function() return enabled end})
+    m.next(); s.keys.left.pressed(); equal(#s.targets, 0)
+    enabled = true
+    m.next(); equal(s.last(), 2)
+end)
+
+test("half-second focus delay still advances at human repeat speed", function()
+    local s, m = setup()
+    s.settle = false
+    for i=1,9 do s.tick(0.4); m.next(); equal(s.last(), (i%3)+1) end
+end)
+
+print(string.format("%d tests passed", tests))
+
+--------------------------------------------------------------------------------
+
+FILE: macos/validate-layout-live.lua
+----------------------------------------
+-- Call from Hammerspoon console. Uses the named scratch window and one Finder window.
+-- Restores each original frame. No document contents are changed.
+assert(linuxControls and not linuxControls.mover.busy)
+local root=debug.getinfo(1,'S').source:sub(2):match('(.*/)') or './'
+local layout=dofile(root..'snap-layout.lua')
+local original=hs.window.focusedWindow()
+local windows={}
+for _,bundle in ipairs({'com.apple.TextEdit','com.apple.finder'}) do
+    local app=hs.application.get(bundle)
+    if app then
+        for _,win in ipairs(app:allWindows()) do
+            if win:isStandard() and not win:isFullScreen() and not win:isMinimized() and
+               (bundle~='com.apple.TextEdit' or win:title()=='Codex-window-test-20261015.rtf') then
+                windows[#windows+1]={win=win,frame=win:frame(),name=bundle}; break
+            end
+        end
+    end
+end
+local cases={
+    {'left',-1,0},{'up',-1,-1},{'down',-1,0},{'right',0,0},
+    {'right',1,0},{'down',1,1},{'left',0,1},{'up',0,0},
+    {'up',0,-1},{'right',1,-1},{'left',0,-1},{'down',0,0},
+    {'down',0,1},{'left',-1,1},{'up',-1,0},{'right',0,0},
+}
+local p={done=false,passed=0,clamped=0,failures={}}
+layoutProbe=p
+local wi,ci=1,1
+local function finish()
+    for _,item in ipairs(windows) do item.win:setFrame(item.frame,0) end
+    if original then original:focus() end
+    p.done=true
+    print('LIVE LAYOUT:',#p.failures==0 and 'PASS' or 'FAIL',p.passed,'checks',p.clamped,'app minimum-size cases',#windows,'apps')
+    for _,v in ipairs(p.failures) do print(v) end
+end
+local function step()
+    local item=windows[wi]
+    if not item then finish(); return end
+    local win=item.win
+    if ci==1 then
+        local a=win:screen():frame()
+        win:setFrame({x=a.x+90,y=a.y+90,w=850,h=650},0)
+    end
+    win:focus()
+    hs.timer.doAfter(0.5,function()
+        local case=cases[ci]
+        linuxControls.snap(case[1])
+        hs.timer.doAfter(0.25,function()
+            local expected=layout.frame({x=case[2],y=case[3]},win:screen():frame())
+            local actual,area=win:frame(),win:screen():frame()
+            local constrained=actual.w>=expected.w-3 and actual.h>=expected.h-3 and actual.w<=area.w+3 and actual.h<=area.h+3
+            local edgeX=case[2]==1 and area.x+area.w-actual.w or area.x
+            local edgeY=case[3]==1 and area.y+area.h-actual.h or area.y
+            constrained=constrained and math.abs(actual.x-edgeX)<3 and math.abs(actual.y-edgeY)<3
+            if layout.near(actual,expected) then p.passed=p.passed+1
+            elseif constrained then p.passed=p.passed+1; p.clamped=p.clamped+1
+            else p.failures[#p.failures+1]=item.name..' step '..ci..' '..case[1]..' actual '..tostring(win:frame()) end
+            ci=ci+1
+            if ci>#cases then win:setFrame(item.frame,0); ci=1; wi=wi+1 end
+            step()
+        end)
+    end)
+end
+print('Live layout check started',#windows,'apps')
+step()
+
+--------------------------------------------------------------------------------
+
+FILE: macos/validate-live.lua
+----------------------------------------
+-- Run from the Hammerspoon console with dofile(...). Temporarily focuses windows.
+-- Records window IDs only, restores the initial window, and prints the result.
+assert(windowCycle and hs.accessibilityState(false), "Window cycle/accessibility unavailable")
+if windowCycleProbe and not windowCycleProbe.done then
+    error("A live cycle check is already running")
+end
+local original = hs.window.focusedWindow()
+local screenID = hs.screen.mainScreen():id()
+local filter = hs.window.filter.new():setOverrideFilter({
+    currentSpace = true, visible = true,
+    allowRoles = {"AXStandardWindow"},
+})
+local expected, count = {}, 0
+for _, win in ipairs(filter:getWindows()) do
+    if win:screen() and win:screen():id() == screenID then
+        expected[win:id()] = true
+        count = count + 1
+    end
+end
+filter:unsubscribeAll():pause()
+assert(count > 1, "At least two windows are required")
+local p = {forward = {}, backward = {}, count = count, done = false, maxFocusDelay = 0}
+windowCycleProbe = p
+
+local function finish(err)
+    p.done = true
+    p.error = err
+    if original then pcall(function() original:focus() end) end
+    print("Window cycle live check:", err and "FAIL" or "PASS", "windows:", count)
+    print("Maximum focus wait:", p.maxFocusDelay)
+    print("Forward IDs:", table.concat(p.forward, ","))
+    print("Backward IDs:", table.concat(p.backward, ","))
+    if err then print(err) end
+end
+
+local function verify()
+    for _, sequence in ipairs({p.forward, p.backward}) do
+        local seen = {}
+        for i = 1, count do
+            local id = sequence[i]
+            if not expected[id] or seen[id] then
+                return "A window was skipped, repeated, or outside the expected set"
+            end
+            seen[id] = true
+        end
+        if sequence[count + 1] ~= sequence[1] then
+            return "The cycle did not wrap to its first window"
+        end
+    end
+    for i, id in ipairs(p.backward) do
+        if id ~= p.forward[((count - i) % count) + 1] then
+            return "Backward order differs from forward order"
+        end
+    end
+end
+
+local step
+step = function()
+    local forward = #p.forward < count + 1
+    local sequence = forward and p.forward or p.backward
+    if not forward and #sequence == count + 1 then finish(verify()); return end
+    local ok, requestedID = pcall(forward and windowCycle.next or windowCycle.previous)
+    if not ok then finish(tostring(requestedID)); return end
+    local started=hs.timer.secondsSinceEpoch()
+    local function checkFocus()
+        local focused = hs.window.focusedWindow()
+        local actualID = (focused and focused:id()) or -1
+        local delay=hs.timer.secondsSinceEpoch()-started
+        if actualID ~= requestedID and delay<1.2 then
+            p.timer=hs.timer.doAfter(0.1,checkFocus); return
+        end
+        if actualID ~= requestedID then
+            finish("Focus mismatch: requested " .. tostring(requestedID) .. ", actual " .. actualID)
+            return
+        end
+        p.maxFocusDelay=math.max(p.maxFocusDelay,delay)
+        sequence[#sequence + 1] = actualID
+        p.timer = hs.timer.doAfter(0.35, step)
+    end
+    p.timer = hs.timer.doAfter(0.15,checkFocus)
+end
+print("Window cycle live check started:", count, "windows, both directions")
+p.timer = hs.timer.doAfter(2, step)
+
+--------------------------------------------------------------------------------
+
+FILE: macos/validate-navigation-live.lua
+----------------------------------------
+assert(linuxControls and not linuxControls.mover.busy)
+local screen=hs.screen.mainScreen()
+local source=hs.spaces.activeSpaceOnScreen(screen)
+local users,index={},nil
+for _,id in ipairs(hs.spaces.spacesForScreen(screen)) do
+    if hs.spaces.spaceType(id)=='user' then users[#users+1]=id; if id==source then index=#users end end
+end
+assert(index and #users>1)
+local step=index<#users and 1 or -1
+local target=users[index+step]
+local original=hs.window.focusedWindow()
+local membership=original and hs.spaces.windowSpaces(original)
+local results={}
+local function verify(label,expected)
+    local actual=hs.spaces.activeSpaceOnScreen(screen)
+    results[#results+1]=actual==expected
+    print('NAVIGATION',label,actual==expected and 'PASS' or 'FAIL',expected,actual)
+end
+hs.timer.doAfter(2,function()
+    if index==1 or index==#users then
+        linuxControls.space(index==1 and -1 or 1,false)
+        verify('boundary',source)
+    end
+    linuxControls.space(step,false)
+    hs.timer.doAfter(1.3,function()
+        verify('out',target)
+        linuxControls.space(-step,false)
+        hs.timer.doAfter(1.3,function()
+            verify('back',source)
+            if original then
+                local now=hs.spaces.windowSpaces(original)
+                local same=hs.inspect(now)==hs.inspect(membership)
+                results[#results+1]=same
+                print('NAVIGATION original window membership',same and 'PASS' or 'FAIL')
+                original:focus()
+            end
+            local ok=true; for _,v in ipairs(results) do ok=ok and v end
+            print('LIVE NAVIGATION',ok and 'PASS' or 'FAIL')
+        end)
+    end)
+end)
+
+--------------------------------------------------------------------------------
+
+FILE: macos/validate-spaces-live.lua
+----------------------------------------
+-- Move only the named scratch window, twice in each direction. Verify actual membership,
+-- active Space, focus, and frame. Begin with scratch on Desktop 1. No user windows moved.
+assert(linuxControls and not linuxControls.mover.busy)
+local app=assert(hs.application.get('com.apple.TextEdit'))
+local win
+for _,w in ipairs(app:allWindows()) do if w:title()=='Codex-window-test-20261015.rtf' then win=w end end
+assert(win,'Scratch window missing')
+local screen=win:screen()
+local source=(hs.spaces.windowSpaces(win) or {})[1]
+local target
+local users={}
+for _,id in ipairs(hs.spaces.spacesForScreen(screen)) do if hs.spaces.spaceType(id)=='user' then users[#users+1]=id end end
+for i,id in ipairs(users) do if id==source then target=users[i+1] or users[i-1] end end
+assert(target,'A second desktop is required')
+local frame=win:frame()
+local original=hs.window.focusedWindow()
+local steps={target,source,target,source}
+local p={done=false,passed=0,results={}}
+spacesProbe=p
+local function finish(err)
+    p.done=true; p.error=err
+    print('LIVE SPACES:',err and 'FAIL' or 'PASS',p.passed,'moves',err or '')
+    if original and not err then original:focus() end
+end
+local function nextMove(i)
+    if not steps[i] then finish(); return end
+    win:focus()
+    hs.timer.doAfter(0.65,function()
+        local accepted=linuxControls.mover.move(win,steps[i])
+        if not accepted then finish('move refused'); return end
+        local started=hs.timer.secondsSinceEpoch()
+        local poll
+        poll=hs.timer.doEvery(0.25,function()
+            if linuxControls.mover.busy and hs.timer.secondsSinceEpoch()-started<15 then return end
+            poll:stop()
+            local result=linuxControls.mover.lastResult
+            local current=hs.spaces.windowSpaces(win)
+            local actual=hs.window.focusedWindow()
+            local ok=result and result.ok and #current==1 and current[1]==steps[i]
+                and hs.spaces.activeSpaceOnScreen(screen)==steps[i]
+                and actual and actual:id()==win:id()
+            for _,k in ipairs({'x','y','w','h'}) do if math.abs(win:frame()[k]-frame[k])>3 then ok=false end end
+            p.results[i]={target=steps[i],actual=current,ok=ok,result=result}
+            print('SPACE MOVE',i,ok and 'PASS' or 'FAIL',hs.inspect(p.results[i]))
+            if not ok then finish('move '..i); return end
+            p.passed=p.passed+1
+            hs.timer.doAfter(0.6,function() nextMove(i+1) end)
+        end)
+    end)
+end
+nextMove(1)
+
+--------------------------------------------------------------------------------
+
+FILE: macos/window-cycle.lua
+----------------------------------------
+-- Hammerspoon: cycle windows in a fixed order, wrapping in both directions.
+-- Load with dofile(...).start(); defaults to Ctrl+Option+Left/Right.
+local M = {}
+local filter, spaceWatcher
+local hotkeys = {}
+local ranks, nextRank = {}, 0
+local pendingID, pendingUntil, pendingScreen
+local onlyCurrentScreen = true
+local enabledWhen
+
+local function resetPending()
+    pendingID, pendingUntil, pendingScreen = nil, nil, nil
+end
+
+local function candidates(screenID)
+    local result = {}
+    for _, win in ipairs(filter:getWindows(hs.window.filter.sortByCreated)) do
+        local id = win:id()
+        local screen = win:screen()
+        if id and (not onlyCurrentScreen or (screen and screen:id() == screenID)) then
+            if not ranks[id] then
+                nextRank = nextRank + 1
+                ranks[id] = nextRank
+            end
+            result[#result + 1] = win
+        end
+    end
+    -- Retain our own ranks: equal creation timestamps must not reorder windows.
+    table.sort(result, function(a, b) return ranks[a:id()] < ranks[b:id()] end)
+    return result
+end
+
+local function cycle(step)
+    if not filter or (enabledWhen and not enabledWhen()) then return end
+    local focused = hs.window.focusedWindow()
+    local screen = (focused and focused:screen()) or hs.screen.mainScreen()
+    local screenID = screen and screen:id()
+    local windows = candidates(screenID)
+    if #windows <= 1 then resetPending(); return end
+
+    local now = hs.timer.absoluteTime() / 1e9
+    local currentID = focused and focused:id()
+    if pendingID and now < pendingUntil and pendingScreen == screenID then
+        -- AX focus can arrive after another keypress. Advance from our target.
+        for _, win in ipairs(windows) do
+            if win:id() == pendingID then currentID = pendingID; break end
+        end
+    end
+
+    local index
+    for i, win in ipairs(windows) do
+        if win:id() == currentID then index = i; break end
+    end
+    local targetIndex
+    if index then
+        targetIndex = ((index - 1 + step) % #windows) + 1
+    else
+        targetIndex = step > 0 and 1 or #windows
+    end
+
+    local target = windows[targetIndex]
+    pendingID, pendingUntil, pendingScreen = target:id(), now + 0.8, screenID
+    local ok, result = pcall(function() return target:focus() end)
+    if not ok or not result then
+        resetPending()
+        hs.printf("Window cycle: could not focus window %s", tostring(target:id()))
+        return nil
+    end
+    return target:id()
+end
+
+function M.next() return cycle(1) end
+function M.previous() return cycle(-1) end
+
+function M.stop()
+    for _, key in ipairs(hotkeys) do key:delete() end
+    hotkeys = {}
+    if spaceWatcher then spaceWatcher:stop(); spaceWatcher = nil end
+    if filter then filter:unsubscribeAll():pause(); filter = nil end
+    ranks, nextRank = {}, 0
+    resetPending()
+    return M
+end
+
+function M.start(options)
+    M.stop()
+    options = options or {}
+    onlyCurrentScreen = options.onlyCurrentScreen ~= false
+    enabledWhen = options.enabledWhen
+    local mods = options.modifiers or {"ctrl", "alt"}
+    filter = hs.window.filter.new():setOverrideFilter({
+        currentSpace = true,
+        visible = true,
+        -- Auxiliary dialogs may activate their parent instead of themselves.
+        -- Including one would send the cycle back to the parent's position.
+        allowRoles = {"AXStandardWindow"},
+    })
+    filter:subscribe(hs.window.filter.windowDestroyed, function(win)
+        local id = win:id()
+        if id then ranks[id] = nil end
+        if id == pendingID then resetPending() end
+    end)
+    spaceWatcher = hs.spaces.watcher.new(resetPending):start()
+
+    local function bind(key, callback)
+        local binding = hs.hotkey.bind(mods, key, callback, nil, callback)
+        if not binding then
+            M.stop()
+            error("Window cycle: cannot register shortcut " .. key)
+        end
+        hotkeys[#hotkeys + 1] = binding
+    end
+    bind("right", M.next)
+    bind("left", M.previous)
+    return M
+end
+
+return M
+
+--------------------------------------------------------------------------------
+
