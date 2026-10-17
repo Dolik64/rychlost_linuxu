@@ -100,7 +100,7 @@ local function verified()
 end
 local function focusWindow()
     local focused=hs.window.focusedWindow()
-    if not focused or focused:id()~=job.win:id() then job.win:focus() end
+    if not focused or focused:id()~=job.win:id() or not onSpace(job.win,hs.spaces.activeSpaceOnScreen(job.screen)) then job.win:focus() end
 end
 local function completeMove()
     releaseMouse()
@@ -257,7 +257,7 @@ end
 function M.start(options)
     M.stop(); options=options or {}
     canToggle=options.canToggle
-    M.enabled=options.enabled~=false
+    M.enabled=options.enabled==true
     M.toggleHotkey=assert(hs.hotkey.bind({'alt','ctrl','shift'},'m',M.toggle))
     return M
 end

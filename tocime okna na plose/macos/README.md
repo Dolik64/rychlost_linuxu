@@ -1,7 +1,8 @@
 # Ovládání macOS po vzoru Pop!_OS
 
-Aktivní profil pro Hammerspoon. **Option nahrazuje Super**.
-Načítá se přes `/Users/jirka/.hammerspoon/init.lua`; Hammerspoon se spouští při přihlášení.
+**Option nahrazuje Super**. Přesun okna mezi plochami obsluhuje vlastní aplikace
+**PopSpace** (`native/build/PopSpace.app`). Ostatní zkratky zůstávají v Hammerspoonu,
+který načítá `/Users/jirka/.hammerspoon/init.lua` a spouští se při přihlášení.
 
 | Zkratka | Akce |
 |---|---|
@@ -32,25 +33,36 @@ Používá přechody volných oken z COSMIC, nikoli automatické dlaždicování
 
 ## Přesun mezi plochami
 
-Přesun probíhá přes náhledy v Mission Control. Běžné rozhraní Hammerspoonu na tomto
-Macu vracelo úspěch, ale okno jiné aplikace se ve skutečnosti nepřesunulo.
-Nový postup skutečné umístění, aktivní plochu a fokus kontroluje.
+PopSpace přesouvá konkrétní okno přímo přes systémové rozhraní macOS.
+**Option, Control a Shift mohou zůstat stisknuté**: přesun spouští stisk šipky,
+nikoliv uvolnění modifikátorů. Nepřetahuje náhledy v Mission Control ani kurzor.
+Kontroluje skutečnou cílovou plochu, aktivní plochu, zaměření a zachování rozměrů.
+Další přesun přijme po dokončení probíhajícího; šipku pro další krok stiskni znovu.
 
-Po stisku **pusť modifikátory**. Po zrychlení 16. 10. trval celý přesun v opakovaném testu **1,95–2,25 sekundy**
-(původní verze přibližně 3–5 sekund);
-na chvíli se zobrazí Mission Control a pohne kurzor. Po dokončení se kurzor vrátí.
-Během přesunu nehýbej myší. Escape přesun zruší. Další naše zkratky během
-přesunu nevstupují do rozpracované operace.
+V okně PopSpace lze vybrat **Rychlá animace**, **Téměř okamžitě** nebo **Běžná
+animace macOS**. První dvě volby posílají Docku gesto s různou rychlostí;
+nejde o záruku pevné délky animace. Pro viditelný přechod je systémové
+„Omezit pohyb“ nyní vypnuté.
 
 - ← a ↑ znamenají předchozí, → a ↓ následující plochu v aktuálním pořadí macOS.
 - Na prvním/posledním místě se nepřeskakuje na opačný konec a nevytvářejí se nové plochy.
 - Přesouvají se běžná okna na běžné plochy stejného monitoru.
 - Nativní fullscreen a okna připnutá na všechny plochy jsou vynechána.
-- Mission Control neposkytuje ID náhledů oken. Skript proto vyžaduje jediný přesně
-  odpovídající název na daném monitoru. Dva stejné názvy nebo zkrácený název mohou
-  přesun znemožnit; v takovém případě se zobrazí zpráva a žádný náhled se nepřetahuje.
-- Rozhraní Mission Control se může změnit s aktualizací macOS. Více fyzických
-  monitorů nebylo v této relaci živě vyzkoušeno.
+- Okno se určuje podle systémového ID; shodné názvy nejsou překážkou.
+- Rychlé gesto se používá jen mezi bezprostředně sousedními plochami na monitoru
+  pod kurzorem. Při přeskočení fullscreen plochy nebo na jiném monitoru se použije
+  běžný přechod. Více fyzických monitorů nebylo živě vyzkoušeno.
+- Přesun používá neveřejné systémové rozhraní; aktualizace macOS může vyžadovat
+  úpravu. Gesto je povoleno pouze na macOS 26. SIP zůstává zapnutý.
+
+PopSpace potřebuje vlastní oprávnění **Zpřístupnění**. Zavření jeho okna ponechá
+zapnuté zkratky a ikonu ↔ v horní liště. Vypnout je lze tlačítkem v okně;
+ukončení aplikace je rovněž uvolní. Spouštění PopSpace při přihlášení zatím
+není nastavené; aplikaci lze otevřít z `native/build/PopSpace.app`.
+
+Sestavení ze zdrojů: `sh native/build.sh`. Aplikaci před sestavením ukonči.
+Lokální podpis se při změně programu mění; macOS pak může vyžadovat odebrání
+starého záznamu PopSpace ze Zpřístupnění a opětovné přidání nové verze.
 
 ## Cyklus oken
 
@@ -69,17 +81,39 @@ poslední vybraný cíl, než macOS doručí skutečnou změnu fokusu.
 | Rectangle: Control + Option + čtyři šipky rozkládaly na poloviny | Tyto čtyři vazby odstraněny; nově přepínají plochy |
 | Rectangle: Control + Option + Shift + ↑ zvětšovalo výšku | Vazba odstraněna; nově přesouvá okno na předchozí plochu |
 | Původní Hammerspoon: Control + Option + ←/→ cyklovalo okna | Cyklus přesunut na samotné Option + šipky |
+| Hammerspoon i PopSpace měly stejné čtyři zkratky pro přesun | Starý mover a jeho přepínač vypnuty přes `nativeSpaces=true`; PopSpace nyní registruje zkratky výhradně |
 | AltTab: W v otevřeném přehledu zavíralo vybrané okno | Zavírání v přehledu změněno na Backspace (⌫) |
 | Option + W v rozložení US píše ∑ | Převzato pro Mission Control podle požadavku |
 | Option + šipky posouvají textový kurzor po slovech/odstavcích | Globálně převzato pro cyklus oken |
 | Option + Shift + šipky rozšiřují výběr textu | Globálně převzato pro rozložení oken |
 
 AltTab má nadále Option + Tab a ostatní nastavení; běžné Command + W zavírá okno
-jako dříve. Ostatní zkratky Rectangle zůstaly. Registrace všech 17 nových zkratek
-v Hammerspoonu prošla. VoiceOver používá některé kombinace Control + Option;
+jako dříve. Ostatní zkratky Rectangle zůstaly. Aktivních je 13 zkratek
+v Hammerspoonu a 4 v PopSpace. VoiceOver používá některé kombinace Control + Option;
 při jeho případném zapnutí by bylo nutné profil znovu sladit.
 
-## Ověření 15.–16. 10. 2026
+## Ověření
+
+17. 10. 2026:
+
+- Uživatel potvrdil, že po předání zkratek PopSpace začíná přesun ihned při
+  držených modifikátorech. Následná oprava obnovuje aktivní okno přes
+  `SetFrontProcessWithOptions` a ověřuje fokus podle systémového ID okna.
+- Po opravě prošly čtyři živé přesuny Finderu tam/zpět v běžné a maximalizované
+  velikosti: **1,50 / 1,09 / 1,06 / 1,11 s**. Ve všech případech souhlasila
+  cílová a aktivní plocha, zaměření i geometrie. Jde o dobu do potvrzení výsledku,
+  nikoliv délku samotné animace.
+- Uživatel následně potvrdil také oba směry na fyzické klávesnici bez puštění
+  modifikátorů. Tato funkční verze je archivovaná v
+  `backups/2026-10-17-popspace-working/`, včetně podepsané aplikace a kontrolních součtů.
+  Další optimalizace probíhají výhradně v `native/PopSpace-dev.m`;
+  samostatné sestavení a postup testování popisuje `native/VYVOJ.md`.
+- Test předání zkratek ověřuje 13 ponechaných vazeb, vypnutí starého moveru
+  a odstranění kolizí při opakovaném spuštění profilu.
+- Sestavení a kontrola podpisu PopSpace prošly. Samotné sestavení nepotvrzuje
+  funkčnost fyzických kláves ani výslednou animaci.
+
+Historické testy 15.–16. 10. (časy starého moveru se nevztahují na PopSpace):
 
 - Uživatel potvrdil funkčnost fyzických kláves **Option + Shift + ←** a **Option + W**.
 - 13 regresních testů cyklu: obě směrové smyčky, rychlé stisky, opožděný fokus,
@@ -108,23 +142,34 @@ Testy bez ovládání skutečných oken se spouštějí v této složce:
 ```sh
 lua test-window-cycle.lua
 lua test-snap-layout.lua
+lua test-fast-space-mover.lua
+lua test-native-handoff.lua
 ```
 
 Živé testy lze spustit v konzoli Hammerspoonu pomocí `dofile` s absolutní cestou:
-`validate-live.lua` pro cyklus, `validate-layout-live.lua` pro rozložení a
-`validate-spaces-live.lua` pro přesuny. Přepínání ploch samostatně ověřuje
+`validate-live.lua` pro cyklus a `validate-layout-live.lua` pro rozložení.
+`validate-spaces-live.lua` ověřoval původní, nyní neaktivní mover. Přepínání ploch samostatně ověřuje
 `validate-navigation-live.lua`. Testy rozložení a přesunů očekávají testovací dokument
 `Codex-window-test-20261015.rtf` v TextEditu; není součástí běžného používání.
 Během testů neklikej do jiných oken. Výsledky se vypisují do konzole.
+
+Vlastní PopSpace má tlačítko **Test tam a zpět**. Použije pouze okno Finderu nebo
+TextEditu s názvem začínajícím `Codex-`: normální velikost tam/zpět, maximalizace
+tam/zpět, pak obnova původních rozměrů. Výsledek v jeho okně uvádí ověřenou plochu,
+fokus, geometrii a dobu přesunu. Testovací okno musí být dostupné na aktuální ploše.
+Při selhání může zůstat na cílové ploše. Test nespouštěj na důležitém dokumentu.
 
 ## Záloha a vypnutí
 
 Původní konfigurace a exporty nastavení jsou v místní složce `backups/`
 s prefixem `2026-10-15-before-option-shortcuts-`. Verze přesunu před zrychlením
 je také uložená jako `2026-10-16-before-speed-space-mover.lua`. Složka je vyloučená z Gitu.
+Konfigurace před předáním zkratek PopSpace je v `backups/2026-10-17-before-native-handoff/`.
+Původní uživatelský mover zůstává zachovaný na disku, ale aktivní profil jej nespouští.
 
 Dočasné vypnutí celého profilu v konzoli Hammerspoonu: `linuxControls.stop()`.
-Opětovné zapnutí: `linuxControls.start()` nebo Reload Config.
+Opětovné zapnutí: `linuxControls.start({nativeSpaces=true})` nebo Reload Config.
+Samostatný PopSpace tímto příkazem nevypneš; ukonči jej v jeho nabídce.
 
 Pro návrat k původnímu cyklu zkopíruj zálohu `init.lua` do
 `/Users/jirka/.hammerspoon/init.lua` a zvol Reload Config. Tím se neobnoví nastavení
@@ -138,4 +183,6 @@ Celý export by nahradil i případné pozdější úpravy.
 [COSMIC – logika volných oken](https://github.com/pop-os/cosmic-comp/blob/master/src/shell/layout/floating/mod.rs),
 [Hammerspoon – Spaces](https://www.hammerspoon.org/docs/hs.spaces.html),
 [Hammerspoon – zkratky](https://www.hammerspoon.org/docs/hs.hotkey.html),
-[Drag.spoon – přístup přes Mission Control](https://github.com/mogenson/Drag.spoon).
+[yabai – přímý přesun na macOS 26](https://github.com/asmvik/yabai/issues/2788),
+[InstantSpaceSwitcher – gesto pro Dock](https://github.com/jurplel/InstantSpaceSwitcher).
+Licence převzatých konstant gesta je v `native/THIRD-PARTY-NOTICES.txt`.

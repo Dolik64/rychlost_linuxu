@@ -57,7 +57,10 @@ function M.space(step,move)
     local screen=win and win:screen() or hs.screen.mainScreen()
     local target=targetSpace(screen,step)
     if not target then hs.alert.show('V tomto směru není další plocha.',0.7); return end
-    if move then return mover.move(win,target) end
+    if move then
+        if mover then return mover.move(win,target) end
+        hs.alert.show('Přesun oken nyní obsluhuje PopSpace.'); return
+    end
     navigationBusy=true
     local ok,err=hs.spaces.gotoSpace(target)
     navigationTimer=hs.timer.doAfter(0.8,function() navigationBusy=false; navigationTimer=nil end)
@@ -73,9 +76,12 @@ function M.stop()
     if destroyFilter then destroyFilter:unsubscribeAll():pause(); destroyFilter=nil end
     states={}
 end
-function M.start()
+function M.start(options)
     M.stop()
-    mover=dofile(root..'fast-space-mover.lua').start({canToggle=function() return not navigationBusy end}); M.mover=mover
+    options=options or {}
+    if options.nativeSpaces then mover=nil
+    else mover=dofile(root..'fast-space-mover.lua').start({canToggle=function() return not navigationBusy end}) end
+    M.mover=mover
     cycle=dofile(root..'window-cycle.lua').start({modifiers={'alt'},enabledWhen=function() return not busy() end}); M.cycle=cycle
     local function previous() if not busy() then return cycle.previous() end end
     local function nextWindow() if not busy() then return cycle.next() end end
@@ -85,7 +91,9 @@ function M.start()
         local step=(direction=='left' or direction=='up') and -1 or 1
         bind({'alt','shift'},direction,function() M.snap(direction) end,false)
         bind({'alt','ctrl'},direction,function() M.space(step,false) end,false)
-        bind({'alt','ctrl','shift'},direction,function() M.space(step,true) end,false)
+        if not options.nativeSpaces then
+            bind({'alt','ctrl','shift'},direction,function() M.space(step,true) end,false)
+        end
     end
     bind({'alt'},'w',function() if not busy() then hs.spaces.toggleMissionControl() end end,false)
     destroyFilter=hs.window.filter.new()
